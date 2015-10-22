@@ -10,11 +10,11 @@ import six
 
 
 class Consumer(BaseStreamConsumer):
-    def __init__(self, context, location, partition_id):
+    def __init__(self, context, location, partition_id, identity):
         self.subscriber = context.socket(zmq.SUB)
         self.subscriber.connect(location)
 
-        filter = pack('>B', partition_id) if partition_id is not None else ''
+        filter = identity+pack('>B', partition_id) if partition_id is not None else identity
         self.subscriber.setsockopt(zmq.SUBSCRIBE, filter)
 
     def get_messages(self, timeout=0.1, count=1):
@@ -71,7 +71,7 @@ class SpiderLogStream(BaseSpiderLogStream):
 
     def consumer(self, partition_id, type):
         location = self.sw_in_location if type == 'sw' else self.db_in_location
-        return Consumer(self.context, location, partition_id)
+        return Consumer(self.context, location, partition_id, 'sl')
 
 
 class UpdateScoreProducer(Producer):
@@ -90,13 +90,14 @@ class UpdateScoreProducer(Producer):
 class UpdateScoreStream(BaseUpdateScoreStream):
     def __init__(self, messagebus):
         self.context = messagebus.context
-        self.location = messagebus.update_score_location
+        self.in_location = messagebus.socket_config.sw_out()
+        self.out_location = messagebus.socket_config.db_in()
 
     def consumer(self):
-        return Consumer(self.context, self.location, partition_id=None)
+        return Consumer(self.context, self.out_location, None, 'us')
 
     def producer(self):
-        return UpdateScoreProducer(self.context, self.location)
+        return UpdateScoreProducer(self.context, self.in_location)
 
 
 class SpiderFeedProducer(Producer):
@@ -112,7 +113,7 @@ class SpiderFeedStream(BaseSpiderFeedStream):
         self.partitions = messagebus.spider_feed_partitions
 
     def consumer(self, partition_id):
-        return Consumer(self.context, self.location, partition_id)
+        return Consumer(self.context, self.location, partition_id, 'sf')
 
     def producer(self):
         return SpiderFeedProducer(self.context, self.location, self.partitions)
