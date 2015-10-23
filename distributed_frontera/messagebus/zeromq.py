@@ -32,7 +32,8 @@ class Consumer(BaseStreamConsumer):
 
 
 class Producer(object):
-    def __init__(self, context, location):
+    def __init__(self, context, location, identity):
+        self.identity = identity
         self.sender = context.socket(zmq.PUB)
         self.sender.connect(location)
 
@@ -46,7 +47,7 @@ class Producer(object):
             raise TypeError("all produce message payloads must be type bytes")
         partition = self.partitioner.partition(key)
         for msg in messages:
-            self.sender.send_multipart([pack(">B", partition), msg])
+            self.sender.send_multipart([self.identity+pack(">B", partition), msg])
 
     def flush(self):
         pass
@@ -54,7 +55,7 @@ class Producer(object):
 
 class SpiderLogProducer(Producer):
     def __init__(self, context, location, partitions):
-        super(SpiderLogProducer, self).__init__(context, location)
+        super(SpiderLogProducer, self).__init__(context, location, 'sl')
         self.partitioner = FingerprintPartitioner(partitions)
 
 
@@ -75,6 +76,9 @@ class SpiderLogStream(BaseSpiderLogStream):
 
 
 class UpdateScoreProducer(Producer):
+    def __init__(self, context, location):
+        super(UpdateScoreProducer, self).__init__(context, location, 'us')
+
     def send(self, key, *messages):
         # Guarantee that msg is actually a list or tuple (should always be true)
         if not isinstance(messages, (list, tuple)):
@@ -84,7 +88,7 @@ class UpdateScoreProducer(Producer):
         if any(not isinstance(m, six.binary_type) for m in messages):
             raise TypeError("all produce message payloads must be type bytes")
         for msg in messages:
-            self.sender.send_multipart(['', msg])
+            self.sender.send_multipart([self.identity, msg])
 
 
 class UpdateScoreStream(BaseUpdateScoreStream):
@@ -102,21 +106,22 @@ class UpdateScoreStream(BaseUpdateScoreStream):
 
 class SpiderFeedProducer(Producer):
     def __init__(self, context, location, partitions):
-        super(SpiderFeedProducer, self).__init__(context, location)
+        super(SpiderFeedProducer, self).__init__(context, location, 'sf')
         self.partitioner = Crc32NamePartitioner(partitions)
 
 
 class SpiderFeedStream(BaseSpiderFeedStream):
     def __init__(self, messagebus):
         self.context = messagebus.context
-        self.location = messagebus.spider_feed_location
+        self.in_location = messagebus.socket_config.db_out()
+        self.out_location = messagebus.socket_config.spiders_in()
         self.partitions = messagebus.spider_feed_partitions
 
     def consumer(self, partition_id):
-        return Consumer(self.context, self.location, partition_id, 'sf')
+        return Consumer(self.context, self.out_location, partition_id, 'sf')
 
     def producer(self):
-        return SpiderFeedProducer(self.context, self.location, self.partitions)
+        return SpiderFeedProducer(self.context, self.in_location, self.partitions)
 
     def available_partitions(self):
         return self.partitions
