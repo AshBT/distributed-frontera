@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from time import time
+from datetime import timedelta
 import logging
 
 import zmq
@@ -30,7 +31,13 @@ class Server(object):
         self.ctx = zmq.Context()
         self.loop = IOLoop.instance()
         self.stats = {
-            'started': time()
+            'started': time(),
+            'spiders_out_recvd': 0,
+            'spiders_in_recvd': 0,
+            'db_in_recvd': 0,
+            'db_out_recvd': 0,
+            'sw_in_recvd': 0,
+            'sw_out_recvd': 0
         }
 
         socket_config = SocketConfig(BIND_HOSTNAME, PORT)
@@ -65,28 +72,35 @@ class Server(object):
         self.spiders_in.on_recv(self.handle_spiders_in_recv)
         logging.basicConfig(format="%(asctime)s %(message)s", datefmt="%Y-%m-%d %H:%M:%S",
             level=logging.INFO)
+        self.logger = logging.getLogger("0mqbroker")
 
     def start(self):
-        print "Started"
+        self.logger.info("Started")
+        self.log_stats()
         try:
             self.loop.start()
         except KeyboardInterrupt:
             pass
 
+    def log_stats(self):
+        self.logger.info(self.stats)
+        self.loop.add_timeout(timedelta(seconds=10), self.log_stats)
+
     def handle_spiders_out_recv(self, msg):
         self.sw_in.send_multipart(msg)
         self.db_in.send_multipart(msg)
-        print "SO: ", msg
+        self.stats['spiders_out_recvd'] += 1
 
     def handle_sw_out_recv(self, msg):
         self.db_in.send_multipart(msg)
-        print "SWO: ", msg
+        self.stats['sw_out_recvd'] += 1
 
     def handle_db_out_recv(self, msg):
         self.spiders_in.send_multipart(msg)
-        print "DBO: ", msg
+        self.stats['db_out_recvd'] += 1
 
     def handle_db_in_recv(self, msg):
+        self.stats['db_in_recvd'] += 1
         if msg[0][0] in ['\x01', '\x00']:
             action, identity, partition_id = self.decode_subscription(msg[0])
             if identity == 'sl':
@@ -100,10 +114,12 @@ class Server(object):
     def handle_sw_in_recv(self, msg):
         if msg[0][0] in ['\x01', '\x00']:
             self.spiders_out.send_multipart(msg)
+        self.stats['sw_in_recvd'] += 1
 
     def handle_spiders_in_recv(self, msg):
         if msg[0][0] in ['\x01', '\x00']:
             self.db_out.send_multipart(msg)
+        self.stats['spiders_in_recvd'] += 1
 
     def decode_subscription(self, msg):
         """
