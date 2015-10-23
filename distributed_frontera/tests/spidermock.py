@@ -3,6 +3,7 @@ import sys
 from time import sleep
 from distributed_frontera.messagebus.zeromq import MessageBus
 from frontera.utils.fingerprint import sha1
+from random import randint
 
 
 def main():
@@ -14,8 +15,8 @@ def main():
     consumer = sf.consumer(partition_id)
 
     while True:
-        producer.send(sha1('helloworld.com'), 'http://helloworld.com/way/to/the/sun')
-        producer.send(sha1('oups.com'), 'http://way.to.the.sun')
+        producer.send(sha1(str(randint(1, 1000))), 'http://helloworld.com/way/to/the/sun/'+str(partition_id))
+        producer.send(sha1(str(randint(1, 1000))), 'http://way.to.the.sun'+str(partition_id))
         for m in consumer.get_messages(timeout=1.0):
             print m
         sys.stdout.write(".")

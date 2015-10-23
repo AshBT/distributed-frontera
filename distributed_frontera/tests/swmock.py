@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import sys
-from time import sleep
 from distributed_frontera.messagebus.zeromq import MessageBus
 
 
@@ -14,7 +13,7 @@ def main():
     while True:
         for m in consumer.get_messages(timeout=1.0):
             print m
-        producer.send('key', 'message')
+        producer.send(None, 'message'+str(partition_id))
         sys.stdout.write('.')
 
 
