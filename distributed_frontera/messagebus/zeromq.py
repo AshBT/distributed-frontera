@@ -5,8 +5,9 @@ from distributed_frontera.worker.partitioner import FingerprintPartitioner, Crc3
 from socket_config import SocketConfig
 import zmq
 from time import time, sleep
-from struct import pack
+from struct import pack, unpack
 import six
+from logging import getLogger
 
 
 class Consumer(BaseStreamConsumer):
@@ -16,6 +17,8 @@ class Consumer(BaseStreamConsumer):
 
         filter = identity+pack('>B', partition_id) if partition_id is not None else identity
         self.subscriber.setsockopt(zmq.SUBSCRIBE, filter)
+        self.counter = None
+        self.logger = getLogger("distributed_frontera.messagebus.zeromq.Consumer")
 
     def get_messages(self, timeout=0.1, count=1):
         started = time()
@@ -27,8 +30,17 @@ class Consumer(BaseStreamConsumer):
                 if time() - started > timeout:
                     break
             else:
+                seqno, = unpack(">I", msg[2])
+                if not self.counter:
+                    self.counter = seqno
+                elif self.counter != seqno:
+                    self.logger.warning("Sequence counter mismatch: expected %d, got %d. Check if system "
+                                        "isn't missing messages." % (self.counter, seqno))
+                    self.counter = None
                 yield msg[1]
                 count -= 1
+                if self.counter:
+                    self.counter += 1
 
 
 class Producer(object):
@@ -36,6 +48,8 @@ class Producer(object):
         self.identity = identity
         self.sender = context.socket(zmq.PUB)
         self.sender.connect(location)
+        self.sender.setsockopt(zmq.RCVHWM, 30000)
+        self.counter = 0
 
     def send(self, key, *messages):
         # Guarantee that msg is actually a list or tuple (should always be true)
@@ -47,7 +61,10 @@ class Producer(object):
             raise TypeError("all produce message payloads must be type bytes")
         partition = self.partitioner.partition(key)
         for msg in messages:
-            self.sender.send_multipart([self.identity+pack(">B", partition), msg])
+            self.sender.send_multipart([self.identity+pack(">B", partition), msg, pack(">I", self.counter)])
+            self.counter += 1
+            if self.counter == 4294967296:
+                self.counter = 0
 
     def flush(self):
         pass
@@ -88,7 +105,10 @@ class UpdateScoreProducer(Producer):
         if any(not isinstance(m, six.binary_type) for m in messages):
             raise TypeError("all produce message payloads must be type bytes")
         for msg in messages:
-            self.sender.send_multipart([self.identity, msg])
+            self.sender.send_multipart([self.identity, msg, pack(">I", self.counter)])
+            self.counter += 1
+            if self.counter == 4294967296:
+                self.counter = 0
 
 
 class UpdateScoreStream(BaseUpdateScoreStream):
@@ -134,10 +154,8 @@ class MessageBus(BaseMessageBus):
         # FIXME: Options!
         self.socket_config = SocketConfig("127.0.0.1", 5550)
 
-        self.spider_log_partitions = [i for i in range(2)]
-        self.update_score_location = "tcp://127.0.0.1:5552"
-        self.spider_feed_location = "tcp://127.0.0.1:5553"
-        self.spider_feed_partitions = [i for i in range(1)]
+        self.spider_log_partitions = [i for i in range(1)]
+        self.spider_feed_partitions = [i for i in range(2)]
 
     def spider_log(self):
         return SpiderLogStream(self)
