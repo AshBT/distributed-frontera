@@ -3,12 +3,12 @@ from time import asctime
 import logging
 from argparse import ArgumentParser
 from importlib import import_module
+from frontera.utils.misc import load_object
 
 from frontera.core.manager import FrontierManager
 
 from distributed_frontera.settings import Settings
 from distributed_frontera.backends.remote.codecs.msgpack import Decoder, Encoder
-from distributed_frontera.messagebus.kafkabus import MessageBus
 
 logging.basicConfig()
 logger = logging.getLogger("score")
@@ -20,7 +20,8 @@ class ScoringWorker(object):
         if partition_id == None or type(partition_id) != int:
             raise AttributeError("Scoring worker partition id isn't set.")
 
-        mb = MessageBus(settings)
+        messagebus = load_object(settings.get('MESSAGE_BUS'))
+        mb = messagebus(settings)
         spider_log = mb.spider_log()
         update_score = mb.update_score()
         self.consumer = spider_log.consumer(partition_id=partition_id, type='sw')

@@ -1,16 +1,17 @@
 # -*- coding: utf-8 -*-
-from frontera import Backend, Settings
+from distributed_frontera.settings import Settings
+from frontera import Backend
 from frontera.core import OverusedBuffer
-from distributed_frontera.messagebus.kafkabus import MessageBus
 from codecs.msgpack import Encoder, Decoder
+from frontera.utils.misc import load_object
 
 
 class MessageBusBackend(Backend):
     def __init__(self, manager):
         self._manager = manager
-        settings = manager.settings
-
-        self.mb = MessageBus(settings)
+        settings = Settings(attributes=manager.settings.attributes)
+        messagebus = load_object(settings.get('MESSAGE_BUS'))
+        self.mb = messagebus(settings)
         self._encoder = Encoder(manager.request_model)
         self._decoder = Decoder(manager.request_model, manager.response_model)
         self.spider_log_producer = self.mb.spider_log().producer()
@@ -20,6 +21,7 @@ class MessageBusBackend(Backend):
 
         self._buffer = OverusedBuffer(self._get_next_requests,
                                       manager.logger.manager.debug)
+        self.consumed = 0
 
     @classmethod
     def from_manager(clas, manager):
@@ -47,7 +49,10 @@ class MessageBusBackend(Backend):
                 request = self._decoder.decode_request(encoded)
                 requests.append(request)
             except ValueError:
-                self._manager.logger.backend.warning("Could not message: {0}".format(encoded))
+                self._manager.logger.backend.warning("Could not decode message: {0}".format(encoded))
+                pass
+            finally:
+                self.consumed += 1
         return requests
 
     def get_next_requests(self, max_n_requests, **kwargs):

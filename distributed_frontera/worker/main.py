@@ -9,7 +9,7 @@ from frontera.utils.url import parse_domain_from_url_fast
 
 from distributed_frontera.backends.remote.codecs.msgpack import Decoder, Encoder
 from distributed_frontera.settings import Settings
-from distributed_frontera.messagebus.kafkabus import MessageBus
+from frontera.utils.misc import load_object
 
 from utils import CallLaterOnce
 from server import WorkerJsonRpcService
@@ -58,7 +58,8 @@ class Slot(object):
 
 class FrontierWorker(object):
     def __init__(self, settings, no_batches, no_scoring, no_incoming):
-        self.mb = MessageBus(settings)
+        messagebus = load_object(settings.get('MESSAGE_BUS'))
+        self.mb = messagebus(settings)
         spider_log = self.mb.spider_log()
         update_score = self.mb.update_score()
         self.spider_feed = self.mb.spider_feed()
@@ -132,7 +133,7 @@ class FrontierWorker(object):
     def consume_scoring(self, *args, **kwargs):
         consumed = 0
         batch = {}
-        for m in self.update_score_consumer.get_messages():
+        for m in self.update_score_consumer.get_messages(count=self.consumer_batch_size):
             try:
                 msg = self._decoder.decode(m)
             except (KeyError, TypeError), e:

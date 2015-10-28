@@ -5,6 +5,8 @@ OVERUSED_SLOT_FACTOR = 2.0
 DELAY_ON_EMPTY = 30.0
 URL_FINGERPRINT_FUNCTION = 'frontera.utils.fingerprint.hostname_local_fingerprint'
 
+MESSAGE_BUS = 'distributed_frontera.messagebus.zeromq.MessageBus'
+
 HBASE_THRIFT_HOST = 'localhost'
 HBASE_THRIFT_PORT = 9090
 HBASE_NAMESPACE = 'crawler'
