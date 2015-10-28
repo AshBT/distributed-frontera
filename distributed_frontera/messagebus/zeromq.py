@@ -17,30 +17,37 @@ class Consumer(BaseStreamConsumer):
 
         filter = identity+pack('>B', partition_id) if partition_id is not None else identity
         self.subscriber.setsockopt(zmq.SUBSCRIBE, filter)
-        self.counter = None
-        self.logger = getLogger("distributed_frontera.messagebus.zeromq.Consumer")
+        self.counter = 0
+        self.count_global = partition_id is None
+        self.logger = getLogger("distributed_frontera.messagebus.zeromq.Consumer(%s-%s)" % (identity, partition_id))
 
     def get_messages(self, timeout=0.1, count=1):
         started = time()
+        sleep_time = timeout / 10.0
         while count:
             try:
                 msg = self.subscriber.recv_multipart(copy=True, flags=zmq.NOBLOCK)
             except zmq.Again:
-                sleep(0.01)
                 if time() - started > timeout:
                     break
+                sleep(sleep_time)
             else:
-                seqno, = unpack(">I", msg[2])
+                """
+                partition_seqno, global_seqno = unpack(">II", msg[2])
+                seqno = global_seqno if self.count_global else partition_seqno
                 if not self.counter:
                     self.counter = seqno
                 elif self.counter != seqno:
                     self.logger.warning("Sequence counter mismatch: expected %d, got %d. Check if system "
                                         "isn't missing messages." % (self.counter, seqno))
                     self.counter = None
+                """
                 yield msg[1]
                 count -= 1
+                """
                 if self.counter:
                     self.counter += 1
+                """
 
 
 class Producer(object):
@@ -48,8 +55,8 @@ class Producer(object):
         self.identity = identity
         self.sender = context.socket(zmq.PUB)
         self.sender.connect(location)
-        self.sender.setsockopt(zmq.RCVHWM, 30000)
-        self.counter = 0
+        self.counters = {}
+        self.global_counter = 0
 
     def send(self, key, *messages):
         # Guarantee that msg is actually a list or tuple (should always be true)
@@ -60,11 +67,17 @@ class Producer(object):
         if any(not isinstance(m, six.binary_type) for m in messages):
             raise TypeError("all produce message payloads must be type bytes")
         partition = self.partitioner.partition(key)
+        counter = self.counters.get(partition, 0)
         for msg in messages:
-            self.sender.send_multipart([self.identity+pack(">B", partition), msg, pack(">I", self.counter)])
-            self.counter += 1
-            if self.counter == 4294967296:
-                self.counter = 0
+            self.sender.send_multipart([self.identity+pack(">B", partition), msg,
+                                        pack(">II", counter, self.global_counter)])
+            counter += 1
+            self.global_counter += 1
+            if counter == 4294967296:
+                counter = 0
+            if self.global_counter == 4294967296:
+                self.global_counter = 0
+        self.counters[partition] = counter
 
     def flush(self):
         pass
@@ -104,11 +117,13 @@ class UpdateScoreProducer(Producer):
         # Raise TypeError if any message is not encoded as bytes
         if any(not isinstance(m, six.binary_type) for m in messages):
             raise TypeError("all produce message payloads must be type bytes")
+        counter = self.counters.get(0, 0)
         for msg in messages:
-            self.sender.send_multipart([self.identity, msg, pack(">I", self.counter)])
-            self.counter += 1
-            if self.counter == 4294967296:
-                self.counter = 0
+            self.sender.send_multipart([self.identity, msg, pack(">II", counter, counter)])
+            counter += 1
+            if counter == 4294967296:
+                counter = 0
+        self.counters[0] = counter
 
 
 class UpdateScoreStream(BaseUpdateScoreStream):
@@ -154,7 +169,7 @@ class MessageBus(BaseMessageBus):
         # FIXME: Options!
         self.socket_config = SocketConfig("127.0.0.1", 5550)
 
-        self.spider_log_partitions = [i for i in range(1)]
+        self.spider_log_partitions = [i for i in range(2)]
         self.spider_feed_partitions = [i for i in range(2)]
 
     def spider_log(self):
