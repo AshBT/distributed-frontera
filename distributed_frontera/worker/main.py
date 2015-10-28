@@ -121,6 +121,8 @@ class FrontierWorker(object):
                         continue
                     logger.info("Request error %s", request.url)
                     self._backend.request_error(request, error)
+                if type == 'offset':
+                    print msg
             finally:
                 consumed += 1
 

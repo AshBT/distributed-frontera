@@ -94,6 +94,13 @@ class Encoder(CrawlFrontierJSONEncoder):
             'job_id': int(job_id)
         })
 
+    def encode_offset(self, partition_id, offset):
+        return self.encode({
+            'type': 'offset',
+            'partition_id': int(partition_id),
+            'offset': int(offset)
+        })
+
 
 class Decoder(json.JSONDecoder):
     def __init__(self, request_model, response_model, *a, **kw):
@@ -140,6 +147,8 @@ class Decoder(json.JSONDecoder):
             return ('add_seeds', seeds)
         if message['type'] == 'new_job_id':
             return ('new_job_id', int(message['job_id']))
+        if message['type'] == 'offset':
+            return ('offset', int(message['partition_id']), int(message['offset']))
         return TypeError('Unknown message type')
 
     def decode_request(self, message):

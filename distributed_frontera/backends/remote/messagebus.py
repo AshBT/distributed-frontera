@@ -16,7 +16,8 @@ class MessageBusBackend(Backend):
         self._decoder = Decoder(manager.request_model, manager.response_model)
         self.spider_log_producer = self.mb.spider_log().producer()
         spider_feed = self.mb.spider_feed()
-        self.consumer = spider_feed.consumer(partition_id=settings.get('SPIDER_PARTITION_ID'))
+        self.partition_id = settings.get('SPIDER_PARTITION_ID')
+        self.consumer = spider_feed.consumer(partition_id=self.partition_id)
         self._get_timeout = float(settings.get('KAFKA_GET_TIMEOUT', 5.0))
 
         self._buffer = OverusedBuffer(self._get_next_requests,
@@ -53,6 +54,8 @@ class MessageBusBackend(Backend):
                 pass
             finally:
                 self.consumed += 1
+        self.spider_log_producer.send('1be68ff556fd0bbe5802d1a100850da29f7f15b11',
+                                      self._encoder.encode_offset(self.partition_id, self.consumed))
         return requests
 
     def get_next_requests(self, max_n_requests, **kwargs):
