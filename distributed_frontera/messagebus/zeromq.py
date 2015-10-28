@@ -165,12 +165,9 @@ class SpiderFeedStream(BaseSpiderFeedStream):
 class MessageBus(BaseMessageBus):
     def __init__(self, settings):
         self.context = zmq.Context()
-
-        # FIXME: Options!
-        self.socket_config = SocketConfig("127.0.0.1", 5550)
-
-        self.spider_log_partitions = [i for i in range(2)]
-        self.spider_feed_partitions = [i for i in range(2)]
+        self.socket_config = SocketConfig(settings.get('ZMQ_HOSTNAME'), settings.get('ZMQ_BASE_PORT'))
+        self.spider_log_partitions = [i for i in range(settings.get('SPIDER_LOG_PARTITIONS'))]
+        self.spider_feed_partitions = [i for i in range(settings.get('SPIDER_FEED_PARTITIONS'))]
 
     def spider_log(self):
         return SpiderLogStream(self)
