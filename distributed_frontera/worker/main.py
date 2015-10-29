@@ -122,7 +122,15 @@ class FrontierWorker(object):
                     logger.info("Request error %s", request.url)
                     self._backend.request_error(request, error)
                 if type == 'offset':
-                    print msg
+                    _, partition_id, offset = msg
+                    lag = self.spider_feed_producer.counters[partition_id] - offset
+                    if lag < 0:
+                        # non-sense in general, happens when SW is restarted and not synced yet with Spiders.
+                        continue
+                    if lag < self.max_next_requests:
+                        self.spider_feed.ready_partitions.add(partition_id)
+                    else:
+                        self.spider_feed.ready_partitions.discard(partition_id)
             finally:
                 consumed += 1
 
