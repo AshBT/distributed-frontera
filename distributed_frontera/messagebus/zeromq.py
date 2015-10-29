@@ -11,7 +11,7 @@ from logging import getLogger
 
 
 class Consumer(BaseStreamConsumer):
-    def __init__(self, context, location, partition_id, identity):
+    def __init__(self, context, location, partition_id, identity, seq_warnings=False):
         self.subscriber = context.socket(zmq.SUB)
         self.subscriber.connect(location)
 
@@ -20,6 +20,7 @@ class Consumer(BaseStreamConsumer):
         self.counter = 0
         self.count_global = partition_id is None
         self.logger = getLogger("distributed_frontera.messagebus.zeromq.Consumer(%s-%s)" % (identity, partition_id))
+        self.seq_warnings = seq_warnings
 
     def get_messages(self, timeout=0.1, count=1):
         started = time()
@@ -32,22 +33,22 @@ class Consumer(BaseStreamConsumer):
                     break
                 sleep(sleep_time)
             else:
-                """
                 partition_seqno, global_seqno = unpack(">II", msg[2])
                 seqno = global_seqno if self.count_global else partition_seqno
                 if not self.counter:
                     self.counter = seqno
                 elif self.counter != seqno:
-                    self.logger.warning("Sequence counter mismatch: expected %d, got %d. Check if system "
-                                        "isn't missing messages." % (self.counter, seqno))
+                    if self.seq_warnings:
+                        self.logger.warning("Sequence counter mismatch: expected %d, got %d. Check if system "
+                                            "isn't missing messages." % (self.counter, seqno))
                     self.counter = None
-                """
                 yield msg[1]
                 count -= 1
-                """
                 if self.counter:
                     self.counter += 1
-                """
+
+    def get_offset(self):
+        return self.counter
 
 
 class Producer(object):
@@ -151,15 +152,16 @@ class SpiderFeedStream(BaseSpiderFeedStream):
         self.in_location = messagebus.socket_config.db_out()
         self.out_location = messagebus.socket_config.spiders_in()
         self.partitions = messagebus.spider_feed_partitions
+        self.ready_partitions = set(self.partitions)
 
     def consumer(self, partition_id):
-        return Consumer(self.context, self.out_location, partition_id, 'sf')
+        return Consumer(self.context, self.out_location, partition_id, 'sf', seq_warnings=True)
 
     def producer(self):
         return SpiderFeedProducer(self.context, self.in_location, self.partitions)
 
     def available_partitions(self):
-        return self.partitions
+        return self.ready_partitions
 
 
 class MessageBus(BaseMessageBus):
