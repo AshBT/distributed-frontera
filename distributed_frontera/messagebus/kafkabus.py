@@ -63,6 +63,9 @@ class Consumer(BaseStreamConsumer):
                 logger.warning("Error %s" % err)
                 break
 
+    def get_offset(self):
+        return 0
+
 
 class SimpleProducer(BaseStreamProducer):
     def __init__(self, connection, topic):

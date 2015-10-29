@@ -11,6 +11,13 @@ class BaseStreamConsumer(object):
         """
         raise NotImplementedError
 
+    @abstractmethod
+    def get_offset(self):
+        """
+        :return: int consumer offset
+        """
+        raise NotImplementedError
+
 
 class BaseStreamProducer(object):
     __metaclass__ = ABCMeta

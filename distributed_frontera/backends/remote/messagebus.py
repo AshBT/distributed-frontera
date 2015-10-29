@@ -50,7 +50,7 @@ class MessageBusBackend(Backend):
             except ValueError:
                 self._manager.logger.backend.warning("Could not decode message: {0}".format(encoded))
                 pass
-        self.spider_log_producer.send('1be68ff556fd0bbe5802d1a100850da29f7f15b11',
+        self.spider_log_producer.send('0123456789abcdef0123456789abcdef012345678',
                                       self._encoder.encode_offset(self.partition_id, self.consumer.get_offset()))
         return requests
 
