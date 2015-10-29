@@ -37,7 +37,7 @@ class Server(object):
             'sw_out_recvd': 0
         }
 
-        socket_config = SocketConfig(BIND_HOSTNAME, PORT)
+        socket_config = SocketConfig(hostname, base_port)
 
         spiders_in_s = self.ctx.socket(zmq.XPUB)
         spiders_out_s = self.ctx.socket(zmq.XSUB)
@@ -69,7 +69,7 @@ class Server(object):
         self.spiders_in.on_recv(self.handle_spiders_in_recv)
         logging.basicConfig(format="%(asctime)s %(message)s", datefmt="%Y-%m-%d %H:%M:%S",
             level=logging.INFO)
-        self.logger = logging.getLogger("0mqbroker")
+        self.logger = logging.getLogger("distributed_frontera.messagebus.zeromq.broker.Server")
 
     def start(self):
         self.logger.info("Started")
