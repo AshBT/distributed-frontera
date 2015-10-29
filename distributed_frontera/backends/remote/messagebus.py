@@ -19,10 +19,8 @@ class MessageBusBackend(Backend):
         self.partition_id = settings.get('SPIDER_PARTITION_ID')
         self.consumer = spider_feed.consumer(partition_id=self.partition_id)
         self._get_timeout = float(settings.get('KAFKA_GET_TIMEOUT', 5.0))
-
         self._buffer = OverusedBuffer(self._get_next_requests,
                                       manager.logger.manager.debug)
-        self.consumed = 0
 
     @classmethod
     def from_manager(clas, manager):
@@ -52,10 +50,8 @@ class MessageBusBackend(Backend):
             except ValueError:
                 self._manager.logger.backend.warning("Could not decode message: {0}".format(encoded))
                 pass
-            finally:
-                self.consumed += 1
         self.spider_log_producer.send('1be68ff556fd0bbe5802d1a100850da29f7f15b11',
-                                      self._encoder.encode_offset(self.partition_id, self.consumed))
+                                      self._encoder.encode_offset(self.partition_id, self.consumer.get_offset()))
         return requests
 
     def get_next_requests(self, max_n_requests, **kwargs):
