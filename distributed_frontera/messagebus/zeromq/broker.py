@@ -12,11 +12,6 @@ from zmq.eventloop.zmqstream import ZMQStream
 from socket_config import SocketConfig
 
 
-
-PORT = 5550
-BIND_HOSTNAME = '127.0.0.1'
-
-
 class Server(object):
 
     ctx = None
