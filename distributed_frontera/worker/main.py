@@ -127,7 +127,7 @@ class FrontierWorker(object):
                     if lag < 0:
                         # non-sense in general, happens when SW is restarted and not synced yet with Spiders.
                         continue
-                    if lag < self.max_next_requests:
+                    if lag < self.max_next_requests or offset == 0:
                         self.spider_feed.ready_partitions.add(partition_id)
                     else:
                         self.spider_feed.ready_partitions.discard(partition_id)
