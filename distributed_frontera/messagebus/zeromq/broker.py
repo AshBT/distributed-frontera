@@ -3,13 +3,15 @@
 from time import time
 from datetime import timedelta
 import logging
+from argparse import ArgumentParser
+from struct import unpack
 
 import zmq
 from zmq.eventloop.ioloop import IOLoop
 from zmq.eventloop.zmqstream import ZMQStream
 from socket_config import SocketConfig
-from struct import unpack, pack
-from binascii import hexlify
+
+
 
 PORT = 5550
 BIND_HOSTNAME = '127.0.0.1'
@@ -27,7 +29,7 @@ class Server(object):
     db_in = None
     db_out = None
 
-    def __init__(self):
+    def __init__(self, hostname, base_port):
         self.ctx = zmq.Context()
         self.loop = IOLoop.instance()
         self.stats = {
@@ -140,7 +142,16 @@ class Server(object):
 
 
 def main():
-    server = Server()
+    parser = ArgumentParser(description="Crawl frontier worker.")
+    parser.add_argument('--hostname', type=str, required=True,
+                        help='Hostname or IP address to bind.')
+    parser.add_argument('--log-level', '-L', type=str, default='INFO',
+                        help="Log level, for ex. DEBUG, INFO, WARN, ERROR, FATAL")
+    parser.add_argument('--port', type=int, help="Base port number, server will bind to 6 ports starting from base.")
+    args = parser.parse_args()
+
+    server = Server(args.hostname, args.port)
+    server.logger.setLevel(args.log_level)
     server.start()
 
 if __name__ == '__main__':

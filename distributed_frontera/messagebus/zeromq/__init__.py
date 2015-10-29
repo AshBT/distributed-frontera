@@ -1,13 +1,15 @@
 # -*- coding: utf-8 -*-
-from base import BaseMessageBus, BaseSpiderLogStream, BaseStreamConsumer, BaseSpiderFeedStream, \
-    BaseUpdateScoreStream
-from distributed_frontera.worker.partitioner import FingerprintPartitioner, Crc32NamePartitioner
-from socket_config import SocketConfig
-import zmq
 from time import time, sleep
 from struct import pack, unpack
-import six
 from logging import getLogger
+
+import zmq
+import six
+
+from distributed_frontera.messagebus.base import BaseMessageBus, BaseSpiderLogStream, BaseStreamConsumer, BaseSpiderFeedStream, \
+    BaseUpdateScoreStream
+from distributed_frontera.worker.partitioner import FingerprintPartitioner, Crc32NamePartitioner
+from distributed_frontera.messagebus.zeromq.socket_config import SocketConfig
 
 
 class Consumer(BaseStreamConsumer):
