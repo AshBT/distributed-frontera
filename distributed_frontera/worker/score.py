@@ -67,6 +67,8 @@ class ScoringWorker(object):
                     fingerprints.add(request.meta['fingerprint'])
                     continue
 
+                if type == 'offset':
+                    continue
                 raise TypeError('Unknown message type %s' % type)
             finally:
                 consumed += 1
