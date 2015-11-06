@@ -175,6 +175,7 @@ class HBaseQueue(object):
                         fingerprint, host_crc32, url, score = item
                         if host_crc32 not in queue:
                             queue[host_crc32] = []
+                        count += 1
                         if max_requests_per_host is not None and len(queue[host_crc32]) > max_requests_per_host:
                             continue
                         queue[host_crc32].append(fingerprint)
@@ -182,6 +183,9 @@ class HBaseQueue(object):
                         if fingerprint not in meta_map:
                             meta_map[fingerprint] = []
                         meta_map[fingerprint].append((rk, item))
+
+                if count > min_requests:
+                    break
 
             count = 0
             for host_id, fprints in queue.iteritems():
