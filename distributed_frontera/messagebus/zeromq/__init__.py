@@ -14,7 +14,7 @@ from distributed_frontera.messagebus.zeromq.socket_config import SocketConfig
 
 class Consumer(BaseStreamConsumer):
     def __init__(self, context, location, partition_id, identity, seq_warnings=False):
-        self.subscriber = context.socket(zmq.SUB)
+        self.subscriber = context.zeromq.socket(zmq.SUB)
         self.subscriber.connect(location)
 
         filter = identity+pack('>B', partition_id) if partition_id is not None else identity
@@ -23,6 +23,10 @@ class Consumer(BaseStreamConsumer):
         self.count_global = partition_id is None
         self.logger = getLogger("distributed_frontera.messagebus.zeromq.Consumer(%s-%s)" % (identity, partition_id))
         self.seq_warnings = seq_warnings
+
+        self.stats = context.stats
+        self.stat_key = "consumer-%s" % identity
+        self.stats[self.stat_key] = 0
 
     def get_messages(self, timeout=0.1, count=1):
         started = time()
@@ -48,6 +52,7 @@ class Consumer(BaseStreamConsumer):
                 count -= 1
                 if self.counter:
                     self.counter += 1
+                self.stats[self.stat_key] += 1
 
     def get_offset(self):
         return self.counter
@@ -56,10 +61,13 @@ class Consumer(BaseStreamConsumer):
 class Producer(object):
     def __init__(self, context, location, identity):
         self.identity = identity
-        self.sender = context.socket(zmq.PUB)
+        self.sender = context.zeromq.socket(zmq.PUB)
         self.sender.connect(location)
         self.counters = {}
         self.global_counter = 0
+        self.stats = context.stats
+        self.stat_key = "producer-%s" % identity
+        self.stats[self.stat_key] = 0
 
     def send(self, key, *messages):
         # Guarantee that msg is actually a list or tuple (should always be true)
@@ -80,6 +88,7 @@ class Producer(object):
                 counter = 0
             if self.global_counter == 4294967296:
                 self.global_counter = 0
+            self.stats[self.stat_key] += 1
         self.counters[partition] = counter
 
     def flush(self):
@@ -126,6 +135,7 @@ class UpdateScoreProducer(Producer):
             counter += 1
             if counter == 4294967296:
                 counter = 0
+            self.stats[self.stat_key] += 1
         self.counters[0] = counter
 
 
@@ -166,9 +176,15 @@ class SpiderFeedStream(BaseSpiderFeedStream):
         return self.ready_partitions
 
 
+class Context(object):
+
+    zeromq = zmq.Context()
+    stats = {}
+
+
 class MessageBus(BaseMessageBus):
     def __init__(self, settings):
-        self.context = zmq.Context()
+        self.context = Context()
         self.socket_config = SocketConfig(settings.get('ZMQ_HOSTNAME'), settings.get('ZMQ_BASE_PORT'))
         self.spider_log_partitions = [i for i in range(settings.get('SPIDER_LOG_PARTITIONS'))]
         self.spider_feed_partitions = [i for i in range(settings.get('SPIDER_FEED_PARTITIONS'))]
