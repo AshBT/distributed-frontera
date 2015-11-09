@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
-import logging
+import logging, sys
 from argparse import ArgumentParser
 from time import asctime
 
 from twisted.internet import reactor
+from twisted.internet import task
 from frontera.core.manager import FrontierManager
 from frontera.utils.url import parse_domain_from_url_fast
+from frontera.logger.handlers import CONSOLE
 
 from distributed_frontera.backends.remote.codecs.msgpack import Decoder, Encoder
 from distributed_frontera.settings import Settings
@@ -14,9 +16,7 @@ from frontera.utils.misc import load_object
 from utils import CallLaterOnce
 from server import WorkerJsonRpcService
 
-
-logging.basicConfig()
-logger = logging.getLogger("cf")
+logger = logging.getLogger("db-worker")
 
 
 class Slot(object):
@@ -79,12 +79,19 @@ class FrontierWorker(object):
                          settings.get('NEW_BATCH_DELAY', 60.0), no_incoming)
         self.job_id = 0
         self.stats = {}
+        self.mb_stats_task = task.LoopingCall(self.print_mb_stats, )
+
+
+    def print_mb_stats(self):
+        for k, v in self.mb.context.stats.iteritems():
+            print "%s = %d" % (k, v)
 
     def set_process_info(self, process_info):
         self.process_info = process_info
 
     def run(self):
         self.slot.schedule(on_start=True)
+        self.mb_stats_task.start(10)
         reactor.run()
 
     def disable_new_batches(self):
@@ -123,6 +130,8 @@ class FrontierWorker(object):
                     self._backend.request_error(request, error)
                 if type == 'offset':
                     _, partition_id, offset = msg
+                    if partition_id not in self.spider_feed_producer.counters:
+                        continue
                     lag = self.spider_feed_producer.counters[partition_id] - offset
                     if lag < 0:
                         # non-sense in general, happens when SW is restarted and not synced yet with Spiders.
@@ -212,6 +221,8 @@ if __name__ == '__main__':
     parser.add_argument('--port', type=int, help="Json Rpc service port to listen")
     args = parser.parse_args()
     logger.setLevel(args.log_level)
+    logger.addHandler(CONSOLE)
+
     settings = Settings(module=args.config)
     if args.port:
         settings.set("JSONRPC_PORT", [args.port])

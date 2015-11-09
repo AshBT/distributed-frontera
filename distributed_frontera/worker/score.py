@@ -6,12 +6,13 @@ from importlib import import_module
 from frontera.utils.misc import load_object
 
 from frontera.core.manager import FrontierManager
+from frontera.logger.handlers import CONSOLE
 
 from distributed_frontera.settings import Settings
 from distributed_frontera.backends.remote.codecs.msgpack import Decoder, Encoder
 
-logging.basicConfig()
-logger = logging.getLogger("score")
+
+logger = logging.getLogger("strategy-worker")
 
 
 class ScoringWorker(object):
@@ -195,6 +196,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     logger.setLevel(args.log_level)
+    logger.addHandler(CONSOLE)
     settings = Settings(module=args.config)
     strategy_module = import_module(args.strategy)
     worker = ScoringWorker(settings, strategy_module)
