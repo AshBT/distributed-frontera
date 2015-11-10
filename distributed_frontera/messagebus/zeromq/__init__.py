@@ -13,9 +13,10 @@ from distributed_frontera.messagebus.zeromq.socket_config import SocketConfig
 
 
 class Consumer(BaseStreamConsumer):
-    def __init__(self, context, location, partition_id, identity, seq_warnings=False):
+    def __init__(self, context, location, partition_id, identity, seq_warnings=False, hwm=1000):
         self.subscriber = context.zeromq.socket(zmq.SUB)
         self.subscriber.connect(location)
+        self.subscriber.set(zmq.RCVHWM, hwm)
 
         filter = identity+pack('>B', partition_id) if partition_id is not None else identity
         self.subscriber.setsockopt(zmq.SUBSCRIBE, filter)
@@ -153,9 +154,10 @@ class UpdateScoreStream(BaseUpdateScoreStream):
 
 
 class SpiderFeedProducer(Producer):
-    def __init__(self, context, location, partitions):
+    def __init__(self, context, location, partitions, hwm):
         super(SpiderFeedProducer, self).__init__(context, location, 'sf')
         self.partitioner = Crc32NamePartitioner(partitions)
+        self.sender.set(zmq.SNDHWM, hwm)
 
 
 class SpiderFeedStream(BaseSpiderFeedStream):
@@ -165,12 +167,14 @@ class SpiderFeedStream(BaseSpiderFeedStream):
         self.out_location = messagebus.socket_config.spiders_in()
         self.partitions = messagebus.spider_feed_partitions
         self.ready_partitions = set(self.partitions)
+        self.consumer_hwm = messagebus.spider_feed_rcvhwm
+        self.producer_hwm = messagebus.spider_feed_sndhwm
 
     def consumer(self, partition_id):
-        return Consumer(self.context, self.out_location, partition_id, 'sf', seq_warnings=True)
+        return Consumer(self.context, self.out_location, partition_id, 'sf', seq_warnings=True, hwm=self.consumer_hwm)
 
     def producer(self):
-        return SpiderFeedProducer(self.context, self.in_location, self.partitions)
+        return SpiderFeedProducer(self.context, self.in_location, self.partitions, self.producer_hwm)
 
     def available_partitions(self):
         return self.ready_partitions
@@ -188,6 +192,8 @@ class MessageBus(BaseMessageBus):
         self.socket_config = SocketConfig(settings.get('ZMQ_HOSTNAME'), settings.get('ZMQ_BASE_PORT'))
         self.spider_log_partitions = [i for i in range(settings.get('SPIDER_LOG_PARTITIONS'))]
         self.spider_feed_partitions = [i for i in range(settings.get('SPIDER_FEED_PARTITIONS'))]
+        self.spider_feed_sndhwm = int(settings.get('MAX_NEXT_REQUESTS') * len(self.spider_feed_partitions) * 1.2)
+        self.spider_feed_rcvhwm = int(settings.get('MAX_NEXT_REQUESTS') * 2.0)
 
     def spider_log(self):
         return SpiderLogStream(self)
