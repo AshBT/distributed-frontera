@@ -79,12 +79,10 @@ class FrontierWorker(object):
                          settings.get('NEW_BATCH_DELAY', 60.0), no_incoming)
         self.job_id = 0
         self.stats = {}
-        self.mb_stats_task = task.LoopingCall(self.print_mb_stats, )
+        self.mb_stats_task = task.LoopingCall(self.dump_mb_stats)
 
-
-    def print_mb_stats(self):
-        for k, v in self.mb.context.stats.iteritems():
-            print "%s = %d" % (k, v)
+    def dump_mb_stats(self):
+        logger.debug(", ".join(["%s=%d" % (k, v) for k, v in self.mb.context.stats.iteritems()]))
 
     def set_process_info(self, process_info):
         self.process_info = process_info
