@@ -4,7 +4,6 @@ from argparse import ArgumentParser
 from time import asctime
 
 from twisted.internet import reactor
-from twisted.internet import task
 from frontera.core.manager import FrontierManager
 from frontera.utils.url import parse_domain_from_url_fast
 from frontera.logger.handlers import CONSOLE
@@ -79,17 +78,12 @@ class FrontierWorker(object):
                          settings.get('NEW_BATCH_DELAY', 60.0), no_incoming)
         self.job_id = 0
         self.stats = {}
-        self.mb_stats_task = task.LoopingCall(self.dump_mb_stats)
-
-    def dump_mb_stats(self):
-        logger.debug(", ".join(["%s=%d" % (k, v) for k, v in self.mb.context.stats.iteritems()]))
 
     def set_process_info(self, process_info):
         self.process_info = process_info
 
     def run(self):
         self.slot.schedule(on_start=True)
-        self.mb_stats_task.start(10)
         reactor.run()
 
     def disable_new_batches(self):
@@ -128,16 +122,19 @@ class FrontierWorker(object):
                     self._backend.request_error(request, error)
                 if type == 'offset':
                     _, partition_id, offset = msg
-                    if partition_id not in self.spider_feed_producer.counters:
+                    try:
+                        producer_offset = self.spider_feed_producer.get_offset(partition_id)
+                    except KeyError:
                         continue
-                    lag = self.spider_feed_producer.counters[partition_id] - offset
-                    if lag < 0:
-                        # non-sense in general, happens when SW is restarted and not synced yet with Spiders.
-                        continue
-                    if lag < self.max_next_requests or offset == 0:
-                        self.spider_feed.ready_partitions.add(partition_id)
                     else:
-                        self.spider_feed.ready_partitions.discard(partition_id)
+                        lag = producer_offset - offset
+                        if lag < 0:
+                            # non-sense in general, happens when SW is restarted and not synced yet with Spiders.
+                            continue
+                        if lag < self.max_next_requests or offset == 0:
+                            self.spider_feed.mark_ready(partition_id)
+                        else:
+                            self.spider_feed.mark_busy(partition_id)
             finally:
                 consumed += 1
 
@@ -194,8 +191,10 @@ class FrontierWorker(object):
                 logger.error("URL parsing error %s, fingerprint %s, url %s" % (e,
                                                                                 request.meta['fingerprint'],
                                                                                 request.url))
-            key = name.encode('utf-8', 'ignore')
-            self.spider_feed_producer.send(key, eo)
+                continue
+            else:
+                key = name.encode('utf-8', 'ignore')
+                self.spider_feed_producer.send(key, eo)
         logger.info("Pushed new batch of %d items", count)
         self.stats['last_batch_size'] = count
         self.stats.setdefault('batches_after_start', 0)

@@ -58,9 +58,9 @@ class Consumer(BaseStreamConsumer):
                             "Could not decode {0} message: {1}".format(
                                 self._topic,
                                 offmsg.message.value))
-                break
             except Exception, err:
                 logger.warning("Error %s" % err)
+            finally:
                 break
 
     def get_offset(self):
@@ -83,6 +83,10 @@ class SimpleProducer(BaseStreamProducer):
         self._producer.stop()
         del self._producer
         self._create()
+
+    def get_offset(self, partition_id):
+        # Kafka has it's own offset management
+        raise KeyError
 
 
 class KeyedProducer(BaseStreamProducer):
@@ -126,6 +130,10 @@ class KeyedProducer(BaseStreamProducer):
     def flush(self):
         if self._prod is not None:
             self._prod.stop()
+
+    def get_offset(self, partition_id):
+        # Kafka has it's own offset management
+        raise KeyError
 
 
 class SpiderLogStream(BaseSpiderLogStream):

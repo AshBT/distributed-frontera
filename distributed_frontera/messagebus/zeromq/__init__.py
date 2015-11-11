@@ -95,6 +95,9 @@ class Producer(object):
     def flush(self):
         pass
 
+    def get_offset(self, partition_id):
+        return self.counters[partition_id]
+
 
 class SpiderLogProducer(Producer):
     def __init__(self, context, location, partitions):
@@ -178,6 +181,12 @@ class SpiderFeedStream(BaseSpiderFeedStream):
 
     def available_partitions(self):
         return self.ready_partitions
+
+    def mark_ready(self, partition_id):
+        self.ready_partitions.add(partition_id)
+
+    def mark_busy(self, partition_id):
+        self.ready_partitions.discard(partition_id)
 
 
 class Context(object):
