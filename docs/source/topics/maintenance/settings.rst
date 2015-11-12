@@ -58,7 +58,7 @@ CONSUMER_BATCH_SIZE
 
 Default: ``512``
 
-This is a batch size used by strategy and db workers for consuming of spider log and update score streams. Increasing it
+This is a batch size used by strategy and db workers for consuming of spider log and scoring log streams. Increasing it
 will cause worker to spend more time on every task, but processing more items per task, therefore leaving less time for
 other tasks during some fixed time interval. Reducing it will result to running several tasks withing the same time
 interval, but with less overall efficiency. Use it when your consumers too slow, or too fast.
@@ -265,12 +265,13 @@ How much time to wait for messages from Kafka consumer.
 KAFKA_LOCATION
 --------------
 
-Hostname and port of kafka broker. Can be a string with hostname:port pair separated with commas(,).
+Hostname and port of kafka broker, separated with :. Can be a string with hostname:port pair separated with commas(,).
 
 .. setting:: FRONTIER_GROUP
 
 FRONTIER_GROUP
 --------------
+
 Default: ``general``
 
 Kafka consumer group name, used for almost everything.
@@ -290,7 +291,9 @@ Spider log stream topic name.
 
 OUTGOING_TOPIC
 --------------
-frontier-todo
+
+Default: ``frontier-todo``
+
 Spider feed stream topic name.
 
 
@@ -308,7 +311,7 @@ A group used by strategy workers for spider log reading. Needs to be different t
 SCORING_TOPIC
 -------------
 
-Kafka topic used for update score stream.
+Kafka topic used for :term:`scoring log` stream.
 
 
 

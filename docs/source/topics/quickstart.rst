@@ -2,7 +2,7 @@
 Quickstart
 ==========
 
-Here is a guide how to quickly setup Frontera for single-machine, multiple process, local hacking. We're going to run
+Here is a guide how to quickly setup Frontera for single-machine, multiple process, local hacking. We're going to deploy
 the simpliest possible setup with HBase and ZeroMQ. Please proceed to :doc:`production` article for a production setup
 details.
 
@@ -32,6 +32,8 @@ of predefined options, please consult settings reference to get more information
 
     $ git clone https://github.com/sibiryakov/general-spider.git
 
+
+.. _running_zeromq_broker:
 
 Start cluster
 =============
