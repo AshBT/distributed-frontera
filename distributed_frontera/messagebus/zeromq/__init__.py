@@ -7,7 +7,7 @@ import zmq
 import six
 
 from distributed_frontera.messagebus.base import BaseMessageBus, BaseSpiderLogStream, BaseStreamConsumer, BaseSpiderFeedStream, \
-    BaseUpdateScoreStream
+    BaseScoringLogStream
 from distributed_frontera.worker.partitioner import FingerprintPartitioner, Crc32NamePartitioner
 from distributed_frontera.messagebus.zeromq.socket_config import SocketConfig
 
@@ -143,7 +143,7 @@ class UpdateScoreProducer(Producer):
         self.counters[0] = counter
 
 
-class UpdateScoreStream(BaseUpdateScoreStream):
+class ScorinLogStream(BaseScoringLogStream):
     def __init__(self, messagebus):
         self.context = messagebus.context
         self.in_location = messagebus.socket_config.sw_out()
@@ -207,8 +207,8 @@ class MessageBus(BaseMessageBus):
     def spider_log(self):
         return SpiderLogStream(self)
 
-    def update_score(self):
-        return UpdateScoreStream(self)
+    def scoring_log(self):
+        return ScorinLogStream(self)
 
     def spider_feed(self):
         return SpiderFeedStream(self)

@@ -82,9 +82,9 @@ class BaseSpiderLogStream(object):
         raise NotImplementedError
 
 
-class BaseUpdateScoreStream(object):
+class BaseScoringLogStream(object):
     """
-    Update Score Stream base class. This stream is transfering score and scheduling information from Strategy workers to
+    Scoring log stream base class. This stream is transfering score and scheduling information from Strategy workers to
     DB Workers. This type of stream isn't requiring any partitioning.
     """
     __metaclass__ = ABCMeta
@@ -162,10 +162,10 @@ class BaseMessageBus(object):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def update_score(self):
+    def scoring_log(self):
         """
-        Create or return update score stream.
-        :return: instance of UpdateScoreStream
+        Create or return scoring log stream.
+        :return: instance of ScorinLogStream
         """
         raise NotImplementedError
 

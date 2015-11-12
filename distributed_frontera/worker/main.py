@@ -60,10 +60,10 @@ class FrontierWorker(object):
         messagebus = load_object(settings.get('MESSAGE_BUS'))
         self.mb = messagebus(settings)
         spider_log = self.mb.spider_log()
-        update_score = self.mb.update_score()
+        scoring_log = self.mb.scoring_log()
         self.spider_feed = self.mb.spider_feed()
         self.spider_log_consumer = spider_log.consumer(partition_id=None, type='db')
-        self.update_score_consumer = update_score.consumer()
+        self.scoring_log_consumer = scoring_log.consumer()
         self.spider_feed_producer = self.spider_feed.producer()
 
         self._manager = FrontierManager.from_settings(settings)
@@ -146,7 +146,7 @@ class FrontierWorker(object):
     def consume_scoring(self, *args, **kwargs):
         consumed = 0
         batch = {}
-        for m in self.update_score_consumer.get_messages(count=self.consumer_batch_size):
+        for m in self.scoring_log_consumer.get_messages(count=self.consumer_batch_size):
             try:
                 msg = self._decoder.decode(m)
             except (KeyError, TypeError), e:

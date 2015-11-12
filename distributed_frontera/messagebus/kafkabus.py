@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from distributed_frontera.messagebus.base import BaseMessageBus, BaseSpiderLogStream, BaseSpiderFeedStream, \
-    BaseStreamConsumer, BaseUpdateScoreStream, BaseStreamProducer
+    BaseStreamConsumer, BaseScoringLogStream, BaseStreamProducer
 
 from kafka import KafkaClient, SimpleConsumer, KeyedProducer as KafkaKeyedProducer, SimpleProducer as KafkaSimpleProducer
 from kafka.common import BrokerResponseError, MessageSizeTooLargeError
@@ -180,7 +180,7 @@ class SpiderFeedStream(BaseSpiderFeedStream):
         return KeyedProducer(self._conn, self._topic, Crc32NamePartitioner)
 
 
-class UpdateScoreStream(BaseUpdateScoreStream):
+class ScoringLogStream(BaseScoringLogStream):
     def __init__(self, messagebus):
         self._topic = messagebus.topic_scoring
         self._group = messagebus.general_group
@@ -212,5 +212,5 @@ class MessageBus(BaseMessageBus):
     def spider_feed(self):
         return SpiderFeedStream(self)
 
-    def update_score(self):
-        return UpdateScoreStream(self)
+    def scoring_log(self):
+        return ScoringLogStream(self)

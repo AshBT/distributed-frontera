@@ -9,7 +9,7 @@ def main():
     partition_id = int(sys.argv[1])
     mb = MessageBus(None)
     sl = mb.spider_log()
-    us = mb.update_score()
+    us = mb.scoring_log()
     consumer = sl.consumer(partition_id=partition_id, type='sw')
     producer = us.producer()
     c = 0

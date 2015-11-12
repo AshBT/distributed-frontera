@@ -9,7 +9,7 @@ def main():
     logging.basicConfig()
     mb = MessageBus(None)
     sl = mb.spider_log()
-    us = mb.update_score()
+    us = mb.scoring_log()
     sf = mb.spider_feed()
     consumer_sl = sl.consumer(partition_id=None, type='db')
     consumer_us = us.consumer()
