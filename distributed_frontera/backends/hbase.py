@@ -73,7 +73,7 @@ def utcnow_timestamp():
 
 class HBaseQueue(object):
 
-    GET_RETRIES = 1
+    GET_RETRIES = 3
 
     def __init__(self, connection, partitions, logger, table_name, drop=False):
         self.connection = connection
@@ -153,7 +153,18 @@ class HBaseQueue(object):
                     final[column] = stream.getvalue()
                 b.put(rk, final)
 
-    def get(self, partition_id, min_requests, min_hosts=None, max_requests_per_host=None):
+    def get(self, partition_id, min_requests, max_requests, min_hosts=None, max_requests_per_host=None):
+        """
+        Tries to get new batch from priority queue. It makes self.GET_RETRIES tries and stops, trying to fit all
+        parameters. Every new iteration evaluates a deeper batch. After batch is requested it is removed from the queue.
+
+        :param partition_id: partition id to get batch from
+        :param min_requests: minimum number of requests
+        :param max_requests: maximum number of requests
+        :param min_hosts: minimum number of hosts
+        :param max_requests_per_host: maximum number of requests per host
+        :return: a set with a tuples (fprint, url, score)
+        """
         table = self.connection.table(self.table_name)
 
         meta_map = {}
@@ -175,6 +186,7 @@ class HBaseQueue(object):
                         fingerprint, host_crc32, url, score = item
                         if host_crc32 not in queue:
                             queue[host_crc32] = []
+                        count += 1
                         if max_requests_per_host is not None and len(queue[host_crc32]) > max_requests_per_host:
                             continue
                         queue[host_crc32].append(fingerprint)
@@ -182,6 +194,8 @@ class HBaseQueue(object):
                         if fingerprint not in meta_map:
                             meta_map[fingerprint] = []
                         meta_map[fingerprint].append((rk, item))
+                if count > max_requests:
+                    break
 
             count = 0
             for host_id, fprints in queue.iteritems():
@@ -194,7 +208,7 @@ class HBaseQueue(object):
                 continue
             break
 
-        self.logger.debug("Tries %d, hosts %d, requests %d" % (tries, len(queue.keys()), count))
+        self.logger.debug("Finished: tries %d, hosts %d, requests %d" % (tries, len(queue.keys()), count))
 
         # For every fingerprint collect it's row keys and return all fingerprints from them
         fprint_map = {}
@@ -284,7 +298,7 @@ class HBaseBackend(Backend):
         hosts = settings.get('HBASE_THRIFT_HOST')
         namespace = settings.get('HBASE_NAMESPACE')
         drop_all_tables = settings.get('HBASE_DROP_ALL_TABLES')
-        self.queue_partitions = settings.get('HBASE_QUEUE_PARTITIONS')
+        self.queue_partitions = settings.get('SPIDER_FEED_PARTITIONS')
         self._table_name = settings.get('HBASE_METADATA_TABLE')
         host = choice(hosts) if type(hosts) in [list, tuple] else hosts
         kwargs = {
@@ -374,7 +388,7 @@ class HBaseBackend(Backend):
         for partition_id in range(0, self.queue_partitions):
             if partition_id not in partitions:
                 continue
-            results = self.queue.get(partition_id, max_next_requests,
+            results = self.queue.get(partition_id, 64, max_next_requests,
                                                     min_hosts=24, max_requests_per_host=128)
             log.debug("Got %d items for partition id %d" % (len(results), partition_id))
             for fingerprint, url, score in results:

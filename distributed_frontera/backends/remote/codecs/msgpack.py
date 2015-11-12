@@ -48,6 +48,9 @@ class Encoder(object):
     def encode_new_job_id(self, job_id):
         return packb(['njid', int(job_id)])
 
+    def encode_offset(self, partition_id, offset):
+        return packb(['of', int(partition_id), int(offset)])
+
 
 class Decoder(object):
     def __init__(self, request_model, response_model, *a, **kw):
@@ -81,6 +84,8 @@ class Decoder(object):
             return ('add_seeds', map(self._request_from_object, obj[1]))
         if obj[0] == 'njid':
             return ('new_job_id', int(obj[1]))
+        if obj[0] == 'of':
+            return ('offset', int(obj[1]), int(obj[2]))
         return TypeError('Unknown message type')
 
     def decode_request(self, buffer):

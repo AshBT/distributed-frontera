@@ -36,8 +36,9 @@ customize) and can be used for broad set of tasks related to large scale web cra
 Architecture
 ------------
 Overall system forms a closed circle and all the components are working as daemons in infinite cycles.
-`Kafka messaging system`_ is used as a data bus, storage is `HBase`_ and fetching is done using `Scrapy`_. Kafka and HBase
-are the only options now, but this is going to change in the near future. There are instances of three types:
+`Kafka`_ or `ZeroMQ`_ can be used as a data bus, storage is `HBase`_ and fetching is done using `Scrapy`_. There is a
+transport and storage layer abstractions, so one can plug it's own data bus or transport. There are instances of three
+types:
 
 - **Spiders** or fetchers, implemented using Scrapy (sharded).
     Responsible for resolving DNS queries, getting content from the Internet and doing link (or other data) extraction
@@ -62,15 +63,16 @@ This is achieved by Kafka topic partitioning.
 Data flow
 ---------
 Let’s start with spiders. The seed URLs defined by the user inside spiders are propagated to strategy workers and DB
-workers by means of a Kafka topic named ‘Spider Log’. Strategy workers decide which pages to crawl using HBase’s state
-cache, assigns a score to each page and sends the results to the ‘Scoring Log’ topic.
+workers by means of ‘Spider Log’ stream. Strategy workers decide which pages to crawl using HBase’s state
+cache, assigns a score to each page and sends the results to the ‘Scoring Log’ stream.
 
-DB Worker stores all kinds of metadata, including content and scores. DB worker checks for the spider’s consumers
-offsets and generates new batches if needed and sends them to “New Batches” topic. Spiders consume these batches,
-downloading each page and extracting links from them. The links are then sent to the ‘Spider Log’ topic where they are
+DB Worker stores all kinds of metadata, including content and scores. Also DB worker checks for the spider’s consumers
+offsets and generates new batches if needed and sends them to 'Spider Feed' stream. Spiders consume these batches,
+downloading each page and extracting links from them. The links are then sent to the ‘Spider Log’ stream where they are
 stored and scored. That way the flow repeats indefinitely.
 
-.. _`Kafka messaging system`: http://kafka.apache.org/
+.. _`Kafka`: http://kafka.apache.org/
+.. _`ZeroMQ`: http://zeromq.org/
 .. _`HBase`: http://hbase.apache.org/
 .. _`Scrapy`: http://scrapy.org/
 .. _`Frontera`: http://github.com/scrapinghub/frontera

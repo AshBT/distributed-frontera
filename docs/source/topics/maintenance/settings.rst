@@ -51,6 +51,37 @@ Built-in settings
 Here’s a list of all available Distributed Frontera settings, in alphabetical order, along with their default values
 and the scope where they apply.
 
+.. setting:: CONSUMER_BATCH_SIZE
+
+CONSUMER_BATCH_SIZE
+-------------------
+
+Default: ``512``
+
+This is a batch size used by strategy and db workers for consuming of spider log and scoring log streams. Increasing it
+will cause worker to spend more time on every task, but processing more items per task, therefore leaving less time for
+other tasks during some fixed time interval. Reducing it will result to running several tasks withing the same time
+interval, but with less overall efficiency. Use it when your consumers too slow, or too fast.
+
+.. setting:: MESSAGE_BUS
+
+MESSAGE_BUS
+-----------
+
+Default: ``distributed_frontera.messagebus.zeromq.MessageBus``
+
+Points Frontera to :term:`message bus` implementation. Defaults to ZeroMQ.
+
+.. setting:: NEW_BATCH_DELAY
+
+NEW_BATCH_DELAY
+---------------
+
+Default: ``30.0``
+
+Used in DB worker, and it's a time interval between production of new batches for all partitions. If partition is busy,
+it will be skipped.
+
 .. setting:: HBASE_BATCH_SIZE
 
 HBASE_BATCH_SIZE
@@ -86,16 +117,6 @@ HBASE_NAMESPACE
 Default: ``crawler``
 
 Name of HBase namespace where all crawler related tables will reside.
-
-.. setting:: HBASE_QUEUE_PARTITIONS
-
-HBASE_QUEUE_PARTITIONS
-----------------------
-
-Default: ``4``
-
-Number of partitions in HBase priority queue. Distributed Frontera has one queue partition assigned per spider.
-Therefore that number should be equal to the number of spider instances in the cluster.
 
 .. setting:: HBASE_QUEUE_TABLE
 
@@ -164,7 +185,133 @@ Default: ``False``
 Whatever to compress content and metadata in HBase using Snappy. Decreases amount of disk and network IO within HBase,
 lowering response times. HBase have to be properly configured to support Snappy compression.
 
+.. setting:: SPIDER_LOG_PARTITIONS
 
+SPIDER_LOG_PARTITIONS
+---------------------
+
+Default: ``1``
+
+Number of :term:`spider log` stream partitions. This affects number of required :term:`strategy worker`s,
+each strategy worker assigned to it's own partition.
+
+.. setting:: SPIDER_FEED_PARTITIONS
+
+SPIDER_FEED_PARTITIONS
+----------------------
+
+Default: ``2``
+
+Number of :term:`spider feed` partitions. This directly affects number of spider processes running. Every spider is
+assigned to it's own partition.
+
+.. setting:: SCORING_PARTITION_ID
+
+SCORING_PARTITION_ID
+--------------------
+
+Used by strategy worker, and represents partition startegy worker assigned to.
+
+.. setting:: SPIDER_PARTITION_ID
+
+SPIDER_PARTITION_ID
+-------------------
+
+Per-spider setting, pointing spider to it's assigned partition.
+
+
+ZeroMQ message bus settings
+===========================
+
+The message bus class is ``distributed_frontera.messagebus.zeromq.MessageBus``
+
+.. setting:: ZMQ_HOSTNAME
+
+ZMQ_HOSTNAME
+------------
+
+Default: ``127.0.0.1``
+
+Hostname, where ZeroMQ socket should bind or connect.
+
+.. setting:: ZMQ_BASE_PORT
+
+ZMQ_BASE_PORT
+-------------
+
+Default: ``5550``
+
+The base port for all ZeroMQ sockets. It uses 6 sockets overall and port starting from base with step 1. Be sure that
+interval [base:base+5] is available.
+
+
+Kafka message bus settings
+==========================
+
+The message bus class is ``distributed_frontera.messagebus.kafkabus.MessageBus``
+
+
+.. setting:: KAFKA_GET_TIMEOUT
+
+KAFKA_GET_TIMEOUT
+-----------------
+
+Default: ``5.0``
+
+How much time to wait for messages from Kafka consumer.
+
+.. setting:: KAFKA_LOCATION
+
+KAFKA_LOCATION
+--------------
+
+Hostname and port of kafka broker, separated with :. Can be a string with hostname:port pair separated with commas(,).
+
+.. setting:: FRONTIER_GROUP
+
+FRONTIER_GROUP
+--------------
+
+Default: ``general``
+
+Kafka consumer group name, used for almost everything.
+
+
+.. setting:: INCOMING_TOPIC
+
+INCOMING_TOPIC
+--------------
+
+Default: ``frontier-done``
+
+Spider log stream topic name.
+
+
+.. setting:: OUTGOING_TOPIC
+
+OUTGOING_TOPIC
+--------------
+
+Default: ``frontier-todo``
+
+Spider feed stream topic name.
+
+
+.. setting:: SCORING_GROUP
+
+SCORING_GROUP
+-------------
+
+Default: ``strategy-workers``
+
+A group used by strategy workers for spider log reading. Needs to be different than ``FRONTIER_GROUP``.
+
+.. setting:: SCORING_TOPIC
+
+SCORING_TOPIC
+-------------
+
+Kafka topic used for :term:`scoring log` stream.
 
 
 
