@@ -74,7 +74,7 @@ class Server(object):
         self.logger = logging.getLogger("distributed_frontera.messagebus.zeromq.broker.Server")
 
     def start(self):
-        self.logger.info("Started")
+        self.logger.info("Distributed Frontera ZeroMQ broker is started.")
         self.log_stats()
         try:
             self.loop.start()
