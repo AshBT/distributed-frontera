@@ -9,6 +9,8 @@ from struct import unpack
 import zmq
 from zmq.eventloop.ioloop import IOLoop
 from zmq.eventloop.zmqstream import ZMQStream
+
+from distributed_frontera.settings import Settings
 from socket_config import SocketConfig
 
 
@@ -138,14 +140,20 @@ class Server(object):
 
 def main():
     parser = ArgumentParser(description="Crawl frontier worker.")
-    parser.add_argument('--hostname', type=str, required=True,
-                        help='Hostname or IP address to bind.')
+    parser.add_argument('--config', type=str,
+                        help='Settings module name, should be accessible by import.')
+    parser.add_argument('--hostname', type=str,
+                        help='Hostname or IP address to bind. Default is 127.0.0.1')
     parser.add_argument('--log-level', '-L', type=str, default='INFO',
-                        help="Log level, for ex. DEBUG, INFO, WARN, ERROR, FATAL")
-    parser.add_argument('--port', type=int, help="Base port number, server will bind to 6 ports starting from base.")
+                        help='Log level, for ex. DEBUG, INFO, WARN, ERROR, FATAL. Default is INFO.')
+    parser.add_argument('--port', type=int,
+                        help='Base port number, server will bind to 6 ports starting from base. Default is 5550')
     args = parser.parse_args()
 
-    server = Server(args.hostname, args.port)
+    settings = Settings(module=args.config)
+    hostname = args.hostname if args.hostname else settings.get("ZMQ_HOSTNAME")
+    port = args.port if args.port else settings.get("ZMQ_BASE_PORT")
+    server = Server(hostname, port)
     server.logger.setLevel(args.log_level)
     server.start()
 
