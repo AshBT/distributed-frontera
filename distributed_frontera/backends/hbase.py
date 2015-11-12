@@ -298,7 +298,7 @@ class HBaseBackend(Backend):
         hosts = settings.get('HBASE_THRIFT_HOST')
         namespace = settings.get('HBASE_NAMESPACE')
         drop_all_tables = settings.get('HBASE_DROP_ALL_TABLES')
-        self.queue_partitions = settings.get('HBASE_QUEUE_PARTITIONS')
+        self.queue_partitions = settings.get('SPIDER_FEED_PARTITIONS')
         self._table_name = settings.get('HBASE_METADATA_TABLE')
         host = choice(hosts) if type(hosts) in [list, tuple] else hosts
         kwargs = {
