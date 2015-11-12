@@ -51,6 +51,18 @@ Built-in settings
 Here’s a list of all available Distributed Frontera settings, in alphabetical order, along with their default values
 and the scope where they apply.
 
+.. setting:: CONSUMER_BATCH_SIZE
+
+CONSUMER_BATCH_SIZE
+-------------------
+
+Default: ``512``
+
+This is a batch size used by strategy and db workers for consuming of spider log and update score streams. Increasing it
+will cause worker to spend more time on every task, but processing more items per task, therefore leaving less time for
+other tasks during some fixed time interval. Reducing it will result to running several tasks withing the same time
+interval, but with less overall efficiency. Use it when your consumers too slow, or too fast.
+
 .. setting:: MESSAGE_BUS
 
 MESSAGE_BUS
@@ -59,6 +71,16 @@ MESSAGE_BUS
 Default: ``distributed_frontera.messagebus.zeromq.MessageBus``
 
 Points Frontera to :term:`message bus` implementation. Defaults to ZeroMQ.
+
+.. setting:: NEW_BATCH_DELAY
+
+NEW_BATCH_DELAY
+---------------
+
+Default: ``30.0``
+
+Used in DB worker, and it's a time interval between production of new batches for all partitions. If partition is busy,
+it will be skipped.
 
 .. setting:: HBASE_BATCH_SIZE
 
@@ -95,16 +117,6 @@ HBASE_NAMESPACE
 Default: ``crawler``
 
 Name of HBase namespace where all crawler related tables will reside.
-
-.. setting:: HBASE_QUEUE_PARTITIONS
-
-HBASE_QUEUE_PARTITIONS
-----------------------
-
-Default: ``4``
-
-Number of partitions in HBase priority queue. Distributed Frontera has one queue partition assigned per spider.
-Therefore that number should be equal to the number of spider instances in the cluster.
 
 .. setting:: HBASE_QUEUE_TABLE
 
@@ -192,6 +204,20 @@ Default: ``2``
 
 Number of :term:`spider feed` partitions. This directly affects number of spider processes running. Every spider is
 assigned to it's own partition.
+
+.. setting:: SCORING_PARTITION_ID
+
+SCORING_PARTITION_ID
+--------------------
+
+Used by strategy worker, and represents partition startegy worker assigned to.
+
+.. setting:: SPIDER_PARTITION_ID
+
+SPIDER_PARTITION_ID
+-------------------
+
+Per-spider setting, pointing spider to it's assigned partition.
 
 
 ZeroMQ message bus settings
@@ -284,10 +310,5 @@ SCORING_TOPIC
 
 Kafka topic used for update score stream.
 
-.. setting:: SPIDER_PARTITION_ID
 
-SPIDER_PARTITION_ID
--------------------
-
-Per-spider setting, pointing spider to it's assigned partition.
 

@@ -71,11 +71,10 @@ class FrontierWorker(object):
         self._encoder = Encoder(self._manager.request_model)
         self._decoder = Decoder(self._manager.request_model, self._manager.response_model)
 
-        self.consumer_batch_size = settings.get('CONSUMER_BATCH_SIZE', 128)
-        self.outgoing_topic = settings.get('OUTGOING_TOPIC')
+        self.consumer_batch_size = settings.get('CONSUMER_BATCH_SIZE')
         self.max_next_requests = settings.MAX_NEXT_REQUESTS
         self.slot = Slot(self.new_batch, self.consume_incoming, self.consume_scoring, no_batches, no_scoring,
-                         settings.get('NEW_BATCH_DELAY', 60.0), no_incoming)
+                         settings.get('NEW_BATCH_DELAY'), no_incoming)
         self.job_id = 0
         self.stats = {}
 

@@ -32,7 +32,7 @@ class ScoringWorker(object):
         self._decoder = Decoder(self._manager.request_model, self._manager.response_model)
         self._encoder = Encoder(self._manager.request_model)
 
-        self.consumer_batch_size = settings.get('CONSUMER_BATCH_SIZE', 128)
+        self.consumer_batch_size = settings.get('CONSUMER_BATCH_SIZE')
         self.strategy = strategy_module.CrawlingStrategy()
         self.backend = self._manager.backend
         self.stats = {}
