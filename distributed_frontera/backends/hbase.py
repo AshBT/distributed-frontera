@@ -344,8 +344,9 @@ class HBaseBackend(Backend):
         pass
 
     def frontier_stop(self):
-        self.connection.close()
         self.flush()
+        self.connection.close()
+
 
     def add_seeds(self, seeds):
         for seed in seeds:
