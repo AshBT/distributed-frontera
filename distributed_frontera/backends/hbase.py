@@ -165,6 +165,7 @@ class HBaseQueue(object):
         :param max_requests_per_host: maximum number of requests per host
         :return: a set with a tuples (fprint, url, score)
         """
+        assert(max_requests > min_requests)
         table = self.connection.table(self.table_name)
 
         meta_map = {}
@@ -178,6 +179,7 @@ class HBaseQueue(object):
             self.logger.debug("Try %d, limit %d, last attempt: requests %d, hosts %d" % (tries, limit, count, len(queue.keys())))
             meta_map.clear()
             queue.clear()
+            count = 0
             for rk, data in table.scan(row_prefix='%d_' % partition_id, limit=int(limit), batch_size=256):
                 for cq, buf in data.iteritems():
                     stream = BytesIO(buf)
@@ -186,20 +188,16 @@ class HBaseQueue(object):
                         fingerprint, host_crc32, url, score = item
                         if host_crc32 not in queue:
                             queue[host_crc32] = []
-                        count += 1
                         if max_requests_per_host is not None and len(queue[host_crc32]) > max_requests_per_host:
                             continue
                         queue[host_crc32].append(fingerprint)
+                        count += 1
 
                         if fingerprint not in meta_map:
                             meta_map[fingerprint] = []
                         meta_map[fingerprint].append((rk, item))
                 if count > max_requests:
                     break
-
-            count = 0
-            for host_id, fprints in queue.iteritems():
-                count += len(fprints)
 
             if min_hosts is not None and len(queue.keys()) < min_hosts:
                 continue
