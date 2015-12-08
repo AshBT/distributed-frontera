@@ -311,6 +311,8 @@ A group used by strategy workers for spider log reading. Needs to be different t
 SCORING_TOPIC
 -------------
 
+Default: ``frontier-score``
+
 Kafka topic used for :term:`scoring log` stream.
 
 

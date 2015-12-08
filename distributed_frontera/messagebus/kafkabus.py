@@ -196,11 +196,11 @@ class ScoringLogStream(BaseScoringLogStream):
 class MessageBus(BaseMessageBus):
     def __init__(self, settings):
         server = settings.get('KAFKA_LOCATION')
-        self.topic_todo = settings.get('OUTGOING_TOPIC', "frontier-todo")
-        self.topic_done = settings.get('INCOMING_TOPIC', "frontier-done")
+        self.topic_todo = settings.get('OUTGOING_TOPIC')
+        self.topic_done = settings.get('INCOMING_TOPIC')
         self.topic_scoring = settings.get('SCORING_TOPIC')
-        self.general_group = settings.get('FRONTIER_GROUP', "general")
-        self.sw_group = settings.get('SCORING_GROUP', "strategy-workers")
+        self.general_group = settings.get('FRONTIER_GROUP')
+        self.sw_group = settings.get('SCORING_GROUP')
         self.spider_partition_id = settings.get('SPIDER_PARTITION_ID')
         self.max_next_requests = settings.MAX_NEXT_REQUESTS
 
