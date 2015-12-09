@@ -14,8 +14,9 @@ Prerequisites
 Here is what services needs to be installed and configured before running Frontera:
 
 - HBase.
+- Thrift with support for Python
 
-These can be set up locally, no specific tuning is needed.
+These can be set up locally in pseudo-distributed mode, no specific tuning is needed.
 Also you need to have installed Python 2.7+ and Scrapy library.
 
 Frontera installation
@@ -23,6 +24,11 @@ Frontera installation
 For Ubuntu, type in command line: ::
 
     $ pip install distributed-frontera
+
+Create a namespace in the HBase shell for the crawler: ::
+
+    $ bin/hbase shell
+    > create_namespace 'crawler'
 
 
 Checkout a simple Scrapy spider
