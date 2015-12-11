@@ -13,10 +13,10 @@ Prerequisites
 
 Here is what services needs to be installed and configured before running Frontera:
 
-- HBase.
+- HBase
 - Thrift with support for Python
 
-These can be set up locally in pseudo-distributed mode, no specific tuning is needed.
+These can be set up locally, no specific tuning is needed.
 Also you need to have installed Python 2.7+ and Scrapy library.
 
 Frontera installation
