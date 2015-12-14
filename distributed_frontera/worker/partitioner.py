@@ -17,6 +17,8 @@ class FingerprintPartitioner(Partitioner):
 
 class Crc32NamePartitioner(Partitioner):
     def partition(self, key, partitions=None):
+        if key is None:
+            return self.partitions[0]
         value = crc32(key) if type(key) is str else crc32(key.encode('utf-8', 'ignore'))
         return self.partition_by_hash(value, partitions if partitions else self.partitions)
 
