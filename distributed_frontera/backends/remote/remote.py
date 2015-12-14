@@ -197,6 +197,21 @@ class KafkaBackend(Backend):
         self._manager.logger.backend.debug("get_next_requests: {0}".format(time.clock() - start))
         return requests
 
+    def finished(self):
+        return False
+
+    @property
+    def metadata(self):
+        return None
+
+    @property
+    def states(self):
+        return None
+
+    @property
+    def queue(self):
+        return None
+
 
 class KafkaOverusedBackend(KafkaBackend):
     component_name = 'Kafka Backend taking into account overused slots'
