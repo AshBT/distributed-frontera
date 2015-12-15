@@ -28,7 +28,7 @@ class ScoringWorker(object):
         self.consumer = spider_log.consumer(partition_id=partition_id, type='sw')
         self.scoring_log_producer = scoring_log.producer()
 
-        self._manager = FrontierManager.from_settings(settings)
+        self._manager = FrontierManager.from_settings(settings, strategy_worker=True)
         self._decoder = Decoder(self._manager.request_model, self._manager.response_model)
         self._encoder = Encoder(self._manager.request_model)
 
