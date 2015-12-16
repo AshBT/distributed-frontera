@@ -152,6 +152,7 @@ class FrontierWorker(object):
             finally:
                 consumed += 1
         """
+        # TODO: Think how it should be implemented in DB-worker only mode.
         if not self.strategy_enabled and self._backend.finished():
             logger.info("Crawling is finished.")
             reactor.stop()
