@@ -14,7 +14,6 @@ Prerequisites
 Here is what services needs to be installed and configured before running Frontera:
 
 - HBase
-- Thrift with support for Python
 
 These can be set up locally, no specific tuning is needed.
 Also you need to have installed Python 2.7+ and Scrapy library.
@@ -44,7 +43,7 @@ of predefined options, please consult settings reference to get more information
 Start cluster
 =============
 
-First, let's start ZeroMQ broker. ::
+Make sure that the HBase Thrift server is up and running. First, let's start ZeroMQ broker. ::
 
     $ python -m distributed_frontera.messagebus.zeromq.broker
 
