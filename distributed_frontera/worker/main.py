@@ -4,6 +4,7 @@ from argparse import ArgumentParser
 from time import asctime
 
 from twisted.internet import reactor
+from frontera.core.models import Request
 from frontera.core.components import DistributedBackend
 from frontera.core.manager import FrontierManager
 from frontera.utils.url import parse_domain_from_url_fast
@@ -74,6 +75,7 @@ class FrontierWorker(object):
         if isinstance(self._backend, DistributedBackend):
             scoring_log = self.mb.scoring_log()
             self.scoring_log_consumer = scoring_log.consumer()
+            self.queue = self._backend.queue
             self.strategy_enabled = True
         else:
             self.strategy_enabled = False
@@ -162,7 +164,8 @@ class FrontierWorker(object):
 
     def consume_scoring(self, *args, **kwargs):
         consumed = 0
-        batch = {}
+        seen = set()
+        batch = []
         for m in self.scoring_log_consumer.get_messages(count=self.consumer_batch_size):
             try:
                 msg = self._decoder.decode(m)
@@ -172,12 +175,14 @@ class FrontierWorker(object):
             else:
                 if msg[0] == 'update_score':
                     _, fprint, score, url, schedule = msg
-                    batch[fprint] = (score, url, schedule)
+                    if fprint not in seen:
+                        batch.append((fprint, score, Request(url), schedule))
+                    seen.add(fprint)
                 if msg[0] == 'new_job_id':
                     self.job_id = msg[1]
             finally:
                 consumed += 1
-        self._backend.update_score(batch)
+        self.queue.schedule(batch)
 
         logger.info("Consumed %d items during scoring consumption.", consumed)
         self.stats['last_consumed_scoring'] = consumed
@@ -236,8 +241,6 @@ if __name__ == '__main__':
     parser = ArgumentParser(description="Frontera DB worker.")
     parser.add_argument('--no-batches', action='store_true',
                         help='Disables periodical generation of new batches.')
-    parser.add_argument('--enable-strategy-worker', action='store_true',
-                        help='Enable Strategy worker integration with DB worker.')
     parser.add_argument('--no-incoming', action='store_true',
                         help='Disables periodical incoming topic consumption.')
     parser.add_argument('--config', type=str, required=True,
@@ -253,7 +256,7 @@ if __name__ == '__main__':
     if args.port:
         settings.set("JSONRPC_PORT", [args.port])
 
-    worker = FrontierWorker(settings, args.no_batches, args.enable_strategy_worker, args.no_incoming)
+    worker = FrontierWorker(settings, args.no_batches, args.no_incoming)
     server = WorkerJsonRpcService(worker, settings)
     server.start_listening()
     worker.run()
