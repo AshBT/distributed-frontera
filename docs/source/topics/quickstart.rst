@@ -43,7 +43,7 @@ of predefined options, please consult settings reference to get more information
 Start cluster
 =============
 
-Make sure that the HBase Thrift server is up and running. First, let's start ZeroMQ broker. ::
+First, make sure that the HBase Thrift server is up and running. Next, let's start ZeroMQ broker. ::
 
     $ python -m distributed_frontera.messagebus.zeromq.broker
 
