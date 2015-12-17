@@ -66,11 +66,9 @@ class FrontierWorker(object):
         self.scoring_log_consumer = scoring_log.consumer()
         self.spider_feed_producer = self.spider_feed.producer()
 
-        store_content = settings.get('HBASE_STORE_CONTENT')
         self._manager = FrontierManager.from_settings(settings)
         self._backend = self._manager.backend
-        self._encoder = Encoder(self._manager.request_model,
-                                send_body=store_content)
+        self._encoder = Encoder(self._manager.request_model)
         self._decoder = Decoder(self._manager.request_model, self._manager.response_model)
 
         self.consumer_batch_size = settings.get('CONSUMER_BATCH_SIZE')

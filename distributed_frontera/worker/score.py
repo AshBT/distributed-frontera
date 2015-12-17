@@ -28,11 +28,9 @@ class ScoringWorker(object):
         self.consumer = spider_log.consumer(partition_id=partition_id, type='sw')
         self.scoring_log_producer = scoring_log.producer()
 
-        store_content = settings.get('HBASE_STORE_CONTENT')
         self._manager = FrontierManager.from_settings(settings)
         self._decoder = Decoder(self._manager.request_model, self._manager.response_model)
-        self._encoder = Encoder(self._manager.request_model,
-                                send_body=store_content)
+        self._encoder = Encoder(self._manager.request_model)
 
         self.consumer_batch_size = settings.get('CONSUMER_BATCH_SIZE')
         self.strategy = strategy_module.CrawlingStrategy()
