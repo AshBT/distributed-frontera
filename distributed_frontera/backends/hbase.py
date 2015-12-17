@@ -332,7 +332,7 @@ class HBaseBackend(Backend):
             self.connection.create_table(self._table_name, schema)
         table = self.connection.table(self._table_name)
         self.batch = table.batch(batch_size=settings.get('HBASE_BATCH_SIZE'))
-        self.store_content = settings.get('HBASE_STORE_CONTENT')
+        self.store_content = settings.get('STORE_CONTENT')
 
     @classmethod
     def from_manager(cls, manager):

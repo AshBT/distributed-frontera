@@ -136,17 +136,6 @@ Default: ``3000000``
 
 Number of items in the :term:`state cache` of :term:`strategy worker`, before it get's flushed to HBase and cleared.
 
-
-.. setting:: HBASE_STORE_CONTENT
-
-HBASE_STORE_CONTENT
--------------------
-
-Default: ``False``
-
-Whatever content needs to be stored in HBase. A serious performance killer.
-
-
 .. setting:: HBASE_THRIFT_HOST
 
 HBASE_THRIFT_HOST
@@ -184,6 +173,15 @@ Default: ``False``
 
 Whatever to compress content and metadata in HBase using Snappy. Decreases amount of disk and network IO within HBase,
 lowering response times. HBase have to be properly configured to support Snappy compression.
+
+.. setting:: STORE_CONTENT
+
+STORE_CONTENT
+-------------
+
+Default: ``False``
+
+Whatever content needs to be stored in the backend. A serious performance killer.
 
 .. setting:: SPIDER_LOG_PARTITIONS
 
