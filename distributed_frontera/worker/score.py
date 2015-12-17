@@ -7,6 +7,8 @@ from frontera.utils.misc import load_object
 
 from frontera.core.manager import FrontierManager
 from frontera.logger.handlers import CONSOLE
+from twisted.internet.task import LoopingCall
+from twisted.internet import reactor
 
 from distributed_frontera.settings import Settings
 from distributed_frontera.backends.remote.codecs.msgpack import Decoder, Encoder
@@ -38,6 +40,7 @@ class ScoringWorker(object):
         self.stats = {}
         self.cache_flush_counter = 0
         self.job_id = 0
+        self.task = LoopingCall(self.work)
 
     def work(self):
         consumed = 0
@@ -122,8 +125,13 @@ class ScoringWorker(object):
         self.stats['last_consumption_run'] = asctime()
 
     def run(self):
-        while True:
-            self.work()
+        self.task.start(interval=0)
+        reactor.addSystemEventTrigger('before', 'shutdown', self.stop)
+        reactor.run()
+
+    def stop(self):
+        logger.info("Stopping frontier manager.")
+        self._manager.stop()
 
     def on_add_seeds(self, seeds):
         logger.info('Adding %i seeds', len(seeds))
