@@ -181,7 +181,7 @@ STORE_CONTENT
 
 Default: ``False``
 
-Whether content should be sent over the message bus and stored in the backend. A serious performance killer.
+Determines if content should be sent over the message bus and stored in the backend: a serious performance killer.
 
 .. setting:: SPIDER_LOG_PARTITIONS
 
