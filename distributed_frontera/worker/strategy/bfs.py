@@ -29,4 +29,4 @@ class CrawlingStrategy(BaseCrawlingStrategy):
     def get_score(self, url):
         url_parts = urlparse(url)
         path_parts = url_parts.path.split('/')
-        return 1.0 / (max(len(path_parts), 1.0) + len(url_parts.path)*0.1)
+        return 1.0 / (max(len(path_parts), 1.0) + len(url_parts.path) * 0.1)

@@ -10,6 +10,7 @@ from distributed_frontera.worker.utils import listen_tcp
 
 logger = getLogger("cf-server")
 
+
 def jsonrpc_error(id, code, message, data=None):
     """Create JSON-RPC error response"""
     return {
@@ -21,6 +22,7 @@ def jsonrpc_error(id, code, message, data=None):
         },
         'id': id,
     }
+
 
 def jsonrpc_result(id, result):
     """Create JSON-RPC result response"""
@@ -55,7 +57,7 @@ class JsonResource(resource.Resource):
         txrequest.setHeader('Content-Type', 'application/json')
         txrequest.setHeader('Access-Control-Allow-Origin', '*')
         txrequest.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, PUT, DELETE')
-        txrequest.setHeader('Access-Control-Allow-Headers',' X-Requested-With')
+        txrequest.setHeader('Access-Control-Allow-Headers', 'X-Requested-With')
         txrequest.setHeader('Content-Length', len(r))
         return r
 

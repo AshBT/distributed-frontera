@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-from frontera.settings.default_settings import *
-
 CONSUMER_BATCH_SIZE = 512
 DELAY_ON_EMPTY = 30.0
 

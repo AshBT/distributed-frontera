@@ -18,7 +18,7 @@ class Consumer(BaseStreamConsumer):
         self.subscriber.connect(location)
         self.subscriber.set(zmq.RCVHWM, hwm)
 
-        filter = identity+pack('>B', partition_id) if partition_id is not None else identity
+        filter = identity + pack('>B', partition_id) if partition_id is not None else identity
         self.subscriber.setsockopt(zmq.SUBSCRIBE, filter)
         self.counter = 0
         self.count_global = partition_id is None
@@ -81,7 +81,7 @@ class Producer(object):
         partition = self.partitioner.partition(key)
         counter = self.counters.get(partition, 0)
         for msg in messages:
-            self.sender.send_multipart([self.identity+pack(">B", partition), msg,
+            self.sender.send_multipart([self.identity + pack(">B", partition), msg,
                                         pack(">II", counter, self.global_counter)])
             counter += 1
             self.global_counter += 1

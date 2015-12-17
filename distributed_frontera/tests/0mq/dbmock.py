@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 from distributed_frontera.messagebus.zeromq import MessageBus
-from frontera.utils.fingerprint import sha1
-import sys
 import logging
 
 

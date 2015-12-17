@@ -31,8 +31,10 @@ _pack_functions = {
     'content': str
 }
 
+
 def unpack_score(blob):
     return unpack(">d", blob)[0]
+
 
 def prepare_hbase_object(obj=None, **kwargs):
     if not obj:
@@ -45,8 +47,9 @@ def prepare_hbase_object(obj=None, **kwargs):
         else:
             cf = 'm'
         func = _pack_functions[k]
-        obj[cf+':'+k] = func(v)
+        obj[cf + ':' + k] = func(v)
     return obj
+
 
 def utcnow_timestamp():
     d = datetime.utcnow()
@@ -118,8 +121,8 @@ class HBaseQueue(Queue):
 
             i = int(score / resolution)
             if i % 10 == 0 and i > 0:
-                i = i-1  # last interval is inclusive from right
-            return (i * resolution, (i+1) * resolution)
+                i = i - 1  # last interval is inclusive from right
+            return (i * resolution, (i + 1) * resolution)
 
         timestamp = int(time() * 1E+6)
         data = dict()
@@ -134,7 +137,7 @@ class HBaseQueue(Queue):
                 raise TypeError("domain of unknown type.")
             item = (unhexlify(fingerprint), host_crc32, url, score)
             score = 1 - score  # because of lexicographical sort in HBase
-            rk = "%d_%s_%d" %(partition_id, "%0.2f_%0.2f" % get_interval(score, 0.01), timestamp)
+            rk = "%d_%s_%d" % (partition_id, "%0.2f_%0.2f" % get_interval(score, 0.01), timestamp)
             data.setdefault(rk, []).append((score, item))
 
         table = self.connection.table(self.table_name)
@@ -149,7 +152,8 @@ class HBaseQueue(Queue):
                 packer = Packer()
                 for column, items in obj.iteritems():
                     stream = BytesIO()
-                    for item in items: stream.write(packer.pack(item))
+                    for item in items:
+                        stream.write(packer.pack(item))
                     final[column] = stream.getvalue()
                 b.put(rk, final)
 
@@ -252,6 +256,7 @@ class HBaseState(States):
 
     def update_cache(self, objs):
         objs = objs if type(objs) in [list, tuple] else [objs]
+
         def put(obj):
             if obj.meta['state'] is not None:
                 self._state_cache[obj.meta['fingerprint']] = obj.meta['state']
@@ -259,6 +264,7 @@ class HBaseState(States):
 
     def set_states(self, objs):
         objs = objs if type(objs) in [list, tuple] else [objs]
+
         def get(obj):
             fprint = obj.meta['fingerprint']
             obj.meta['state'] = self._state_cache[fprint] if fprint in self._state_cache else None
@@ -302,9 +308,9 @@ class HBaseMetadata(Metadata):
         if self._table_name not in tables:
             schema = {'m': {'max_versions': 1},
                       's': {'max_versions': 1, 'block_cache_enabled': 1,
-                      'bloom_filter_type': 'ROW', 'in_memory': True, },
+                            'bloom_filter_type': 'ROW', 'in_memory': True, },
                       'c': {'max_versions': 1}
-                     }
+                      }
             if use_snappy:
                 schema['m']['compression'] = 'SNAPPY'
                 schema['c']['compression'] = 'SNAPPY'
@@ -422,11 +428,13 @@ class HBaseBackend(DistributedBackend):
 
     def frontier_start(self):
         for component in [self.metadata, self.queue, self.states]:
-            if component: component.frontier_start()
+            if component:
+                component.frontier_start()
 
     def frontier_stop(self):
         for component in [self.metadata, self.queue, self.states]:
-            if component: component.frontier_stop()
+            if component:
+                component.frontier_stop()
         self.connection.close()
 
     def add_seeds(self, seeds):

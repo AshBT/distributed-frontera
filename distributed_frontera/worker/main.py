@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import logging, sys
+import logging
 from argparse import ArgumentParser
 from time import asctime
 
@@ -195,9 +195,8 @@ class FrontierWorker(object):
             try:
                 netloc, name, scheme, sld, tld, subdomain = parse_domain_from_url_fast(request.url)
             except Exception, e:
-                logger.error("URL parsing error %s, fingerprint %s, url %s" % (e,
-                                                                                request.meta['fingerprint'],
-                                                                                request.url))
+                logger.error("URL parsing error %s, fingerprint %s, url %s" % (e, request.meta['fingerprint'],
+                                                                               request.url))
                 return None
             else:
                 return name.encode('utf-8', 'ignore')
@@ -228,7 +227,7 @@ class FrontierWorker(object):
                                                                                request.url))
                 continue
             finally:
-                count +=1
+                count += 1
             self.spider_feed_producer.send(get_key(request), eo)
         logger.info("Pushed new batch of %d items", count)
         self.stats['last_batch_size'] = count

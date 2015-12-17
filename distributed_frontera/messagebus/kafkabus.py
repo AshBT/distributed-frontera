@@ -8,7 +8,7 @@ from kafka.protocol import CODEC_SNAPPY
 
 from distributed_frontera.worker.partitioner import FingerprintPartitioner, Crc32NamePartitioner
 from distributed_frontera.worker.offsets import Fetcher
-from logging import getLogger, StreamHandler
+from logging import getLogger
 from time import sleep
 
 logger = getLogger("distributed_frontera.messagebus.kafkabus")
@@ -22,7 +22,7 @@ class Consumer(BaseStreamConsumer):
         self._conn = conn
         self._group = group
         self._topic = topic
-        self._partition_ids = [partition_id] if partition_id != None else None
+        self._partition_ids = [partition_id] if partition_id is not None else None
 
         self._cons = None
         self._connect_consumer()

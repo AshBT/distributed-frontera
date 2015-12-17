@@ -3,6 +3,7 @@ from __future__ import absolute_import
 import json
 from base64 import b64decode, b64encode
 
+
 def _prepare_request_message(request):
     return {'url': request.url,
             'method': request.method,
@@ -10,8 +11,10 @@ def _prepare_request_message(request):
             'cookies': request.cookies,
             'meta': request.meta}
 
+
 def _prepare_links_message(links):
     return [_prepare_request_message(link) for link in links]
+
 
 def _prepare_response_message(response, send_body):
     return {'url': response.url,
@@ -112,9 +115,9 @@ class Decoder(json.JSONDecoder):
         request = self._request_model(url=obj['url'],
                                       meta=obj['meta'])
         return self._response_model(url=obj['url'],
-                     status_code=obj['status_code'],
-                     body=b64decode(obj['body']),
-                     request=request)
+                                    status_code=obj['status_code'],
+                                    body=b64decode(obj['body']),
+                                    request=request)
 
     def _request_from_object(self, obj):
         return self._request_model(url=obj['url'],
@@ -122,6 +125,7 @@ class Decoder(json.JSONDecoder):
                                    headers=obj['headers'],
                                    cookies=obj['cookies'],
                                    meta=obj['meta'])
+
     def decode(self, message):
         """
         Decodes the message
@@ -154,8 +158,8 @@ class Decoder(json.JSONDecoder):
     def decode_request(self, message):
         obj = super(Decoder, self).decode(message)
         return self._request_model(url=obj['url'],
-                                    method=obj['method'],
-                                    headers=obj['headers'],
-                                    cookies=obj['cookies'],
-                                    meta=obj['meta'])
+                                   method=obj['method'],
+                                   headers=obj['headers'],
+                                   cookies=obj['cookies'],
+                                   meta=obj['meta'])
 

@@ -20,7 +20,7 @@ logger = logging.getLogger("strategy-worker")
 class ScoringWorker(object):
     def __init__(self, settings, strategy_module):
         partition_id = settings.get('SCORING_PARTITION_ID')
-        if partition_id == None or type(partition_id) != int:
+        if partition_id is None or type(partition_id) != int:
             raise AttributeError("Scoring worker partition id isn't set.")
 
         messagebus = load_object(settings.get('MESSAGE_BUS'))
@@ -88,7 +88,8 @@ class ScoringWorker(object):
             type = msg[0]
             if type == 'add_seeds':
                 _, seeds = msg
-                for seed in seeds: seed.meta['jid'] = self.job_id
+                for seed in seeds:
+                    seed.meta['jid'] = self.job_id
                 results.extend(self.on_add_seeds(seeds))
                 continue
 
