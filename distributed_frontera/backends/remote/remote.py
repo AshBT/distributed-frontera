@@ -55,7 +55,8 @@ class KafkaBackend(Backend):
         self._connect_consumer()
         self._connect_producer()
 
-        self._encoder = Encoder(manager.request_model)
+        store_content = settings.get('STORE_CONTENT')
+        self._encoder = Encoder(manager.request_model, send_body=store_content)
         self._decoder = Decoder(manager.request_model, manager.response_model)
                 
     def _connect_producer(self):
