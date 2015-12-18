@@ -16,7 +16,7 @@ def main():
     while True:
         for m in consumer.get_messages(timeout=0.1, count=512):
             c += 1
-            producer.send(None, 'message'+str(partition_id)+","+str(c))
+            producer.send(None, 'message' + str(partition_id) + "," + str(c))
 
         print c
 

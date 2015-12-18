@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 from msgpack import packb, unpackb
 
+
 def _prepare_request_message(request):
     def serialize(obj):
         """Recursively walk object's hierarchy."""
@@ -21,6 +22,7 @@ def _prepare_request_message(request):
         else:
             return None
     return [request.url, request.headers, request.cookies, serialize(request.meta)]
+
 
 def _prepare_response_message(response, send_body):
     return [response.url, response.status_code, response.meta, response.body if send_body else None]
@@ -62,7 +64,7 @@ class Decoder(object):
                                     status_code=obj[1],
                                     body=obj[3],
                                     request=self._request_model(url=obj[0],
-                                                                meta=obj[2]                                                                ))
+                                                                meta=obj[2]))
 
     def _request_from_object(self, obj):
         return self._request_model(url=obj[0],

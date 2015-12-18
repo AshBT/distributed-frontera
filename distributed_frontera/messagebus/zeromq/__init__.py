@@ -6,8 +6,8 @@ from logging import getLogger
 import zmq
 import six
 
-from distributed_frontera.messagebus.base import BaseMessageBus, BaseSpiderLogStream, BaseStreamConsumer, BaseSpiderFeedStream, \
-    BaseScoringLogStream
+from distributed_frontera.messagebus.base import BaseMessageBus, BaseSpiderLogStream, BaseStreamConsumer, \
+    BaseSpiderFeedStream, BaseScoringLogStream
 from distributed_frontera.worker.partitioner import FingerprintPartitioner, Crc32NamePartitioner
 from distributed_frontera.messagebus.zeromq.socket_config import SocketConfig
 
@@ -18,7 +18,7 @@ class Consumer(BaseStreamConsumer):
         self.subscriber.connect(location)
         self.subscriber.set(zmq.RCVHWM, hwm)
 
-        filter = identity+pack('>B', partition_id) if partition_id is not None else identity
+        filter = identity + pack('>B', partition_id) if partition_id is not None else identity
         self.subscriber.setsockopt(zmq.SUBSCRIBE, filter)
         self.counter = 0
         self.count_global = partition_id is None
@@ -81,7 +81,7 @@ class Producer(object):
         partition = self.partitioner.partition(key)
         counter = self.counters.get(partition, 0)
         for msg in messages:
-            self.sender.send_multipart([self.identity+pack(">B", partition), msg,
+            self.sender.send_multipart([self.identity + pack(">B", partition), msg,
                                         pack(">II", counter, self.global_counter)])
             counter += 1
             self.global_counter += 1
@@ -157,9 +157,10 @@ class ScorinLogStream(BaseScoringLogStream):
 
 
 class SpiderFeedProducer(Producer):
-    def __init__(self, context, location, partitions, hwm):
+    def __init__(self, context, location, partitions, hwm, hostname_partitioning):
         super(SpiderFeedProducer, self).__init__(context, location, 'sf')
-        self.partitioner = Crc32NamePartitioner(partitions)
+        self.partitioner = Crc32NamePartitioner(partitions) if hostname_partitioning else \
+            FingerprintPartitioner(partitions)
         self.sender.set(zmq.SNDHWM, hwm)
 
 
@@ -172,12 +173,14 @@ class SpiderFeedStream(BaseSpiderFeedStream):
         self.ready_partitions = set(self.partitions)
         self.consumer_hwm = messagebus.spider_feed_rcvhwm
         self.producer_hwm = messagebus.spider_feed_sndhwm
+        self.hostname_partitioning = messagebus.hostname_partitioning
 
     def consumer(self, partition_id):
         return Consumer(self.context, self.out_location, partition_id, 'sf', seq_warnings=True, hwm=self.consumer_hwm)
 
     def producer(self):
-        return SpiderFeedProducer(self.context, self.in_location, self.partitions, self.producer_hwm)
+        return SpiderFeedProducer(self.context, self.in_location, self.partitions,
+                                  self.producer_hwm, self.hostname_partitioning)
 
     def available_partitions(self):
         return self.ready_partitions
@@ -203,6 +206,7 @@ class MessageBus(BaseMessageBus):
         self.spider_feed_partitions = [i for i in range(settings.get('SPIDER_FEED_PARTITIONS'))]
         self.spider_feed_sndhwm = int(settings.get('MAX_NEXT_REQUESTS') * len(self.spider_feed_partitions) * 1.2)
         self.spider_feed_rcvhwm = int(settings.get('MAX_NEXT_REQUESTS') * 2.0)
+        self.hostname_partitioning = settings.get('QUEUE_HOSTNAME_PARTITIONING')
 
     def spider_log(self):
         return SpiderLogStream(self)

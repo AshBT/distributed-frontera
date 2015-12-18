@@ -57,3 +57,18 @@ class MessageBusBackend(Backend):
 
     def get_next_requests(self, max_n_requests, **kwargs):
         return self._buffer.get_next_requests(max_n_requests, **kwargs)
+
+    def finished(self):
+        return False
+
+    @property
+    def metadata(self):
+        return None
+
+    @property
+    def queue(self):
+        return None
+
+    @property
+    def states(self):
+        return None

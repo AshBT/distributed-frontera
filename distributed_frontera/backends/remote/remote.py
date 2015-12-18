@@ -58,17 +58,17 @@ class KafkaBackend(Backend):
         store_content = settings.get('STORE_CONTENT')
         self._encoder = Encoder(manager.request_model, send_body=store_content)
         self._decoder = Decoder(manager.request_model, manager.response_model)
-                
+
     def _connect_producer(self):
         """If producer is not connected try to connect it now.
 
         :returns: bool -- True if producer is connected
-        """        
+        """
         if self._prod is None:
             try:
                 self._prod = KeyedProducer(self._conn, partitioner=FingerprintPartitioner, codec=CODEC_SNAPPY)
             except BrokerResponseError:
-                self._prod = None        
+                self._prod = None
                 if self._manager is not None:
                     self._manager.logger.backend.warning(
                         "Could not connect producer to Kafka server")
@@ -112,7 +112,7 @@ class KafkaBackend(Backend):
                 "Could not connect consumer to {0}. I will try latter.".format(
                     self._topic_todo))
 
-    def frontier_stop(self):        
+    def frontier_stop(self):
         # flush everything if a batch is incomplete
         self._prod.stop()
 
@@ -147,7 +147,7 @@ class KafkaBackend(Backend):
 
     def page_crawled(self, response, links):
         self._send_message(self._encoder.encode_page_crawled(response, links), response.meta['fingerprint'])
-            
+
     def request_error(self, page, error):
         self._send_message(self._encoder.encode_request_error(page, error), page.meta['fingerprint'])
 
@@ -187,7 +187,7 @@ class KafkaBackend(Backend):
 
                 # https://github.com/mumrah/kafka-python/issues/263
                 self._cons.seek(0, 2)  # moving to the tail of the log
-                continue     
+                continue
 
             except Exception, err:
                 self._manager.logger.backend.warning(
@@ -196,6 +196,21 @@ class KafkaBackend(Backend):
 
         self._manager.logger.backend.debug("get_next_requests: {0}".format(time.clock() - start))
         return requests
+
+    def finished(self):
+        return False
+
+    @property
+    def metadata(self):
+        return None
+
+    @property
+    def states(self):
+        return None
+
+    @property
+    def queue(self):
+        return None
 
 
 class KafkaOverusedBackend(KafkaBackend):

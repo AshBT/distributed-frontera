@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-from frontera.settings.default_settings import *
-
 CONSUMER_BATCH_SIZE = 512
 DELAY_ON_EMPTY = 30.0
 
@@ -22,6 +20,7 @@ NEW_BATCH_DELAY = 30.0
 OVERUSED_SLOT_FACTOR = 2.0
 SPIDER_LOG_PARTITIONS = 1
 SPIDER_FEED_PARTITIONS = 2
+QUEUE_HOSTNAME_PARTITIONING = False
 
 URL_FINGERPRINT_FUNCTION = 'frontera.utils.fingerprint.hostname_local_fingerprint'
 

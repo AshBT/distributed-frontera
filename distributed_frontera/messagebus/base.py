@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-from abc import abstractmethod, abstractproperty, ABCMeta
+from abc import abstractmethod, ABCMeta
+
 
 class BaseStreamConsumer(object):
     __metaclass__ = ABCMeta

@@ -8,7 +8,7 @@ from kafka.protocol import CODEC_SNAPPY
 
 from distributed_frontera.worker.partitioner import FingerprintPartitioner, Crc32NamePartitioner
 from distributed_frontera.worker.offsets import Fetcher
-from logging import getLogger, StreamHandler
+from logging import getLogger
 from time import sleep
 
 logger = getLogger("distributed_frontera.messagebus.kafkabus")
@@ -22,7 +22,7 @@ class Consumer(BaseStreamConsumer):
         self._conn = conn
         self._group = group
         self._topic = topic
-        self._partition_ids = [partition_id] if partition_id != None else None
+        self._partition_ids = [partition_id] if partition_id is not None else None
 
         self._cons = None
         self._connect_consumer()
@@ -163,6 +163,7 @@ class SpiderFeedStream(BaseSpiderFeedStream):
         self._general_group = messagebus.general_group
         self._topic = messagebus.topic_todo
         self._max_next_requests = messagebus.max_next_requests
+        self._hostname_partitioning = messagebus.hostname_partitioning
         self._offset_fetcher = Fetcher(self._conn, self._topic, self._general_group)
 
     def consumer(self, partition_id):
@@ -177,7 +178,8 @@ class SpiderFeedStream(BaseSpiderFeedStream):
         return partitions
 
     def producer(self):
-        return KeyedProducer(self._conn, self._topic, Crc32NamePartitioner)
+        partitioner = Crc32NamePartitioner if self._hostname_partitioning else FingerprintPartitioner
+        return KeyedProducer(self._conn, self._topic, partitioner)
 
 
 class ScoringLogStream(BaseScoringLogStream):
@@ -203,6 +205,7 @@ class MessageBus(BaseMessageBus):
         self.sw_group = settings.get('SCORING_GROUP', "strategy-workers")
         self.spider_partition_id = settings.get('SPIDER_PARTITION_ID')
         self.max_next_requests = settings.MAX_NEXT_REQUESTS
+        self.hostname_partitioning = settings.get('QUEUE_HOSTNAME_PARTITIONING')
 
         self.conn = KafkaClient(server)
 

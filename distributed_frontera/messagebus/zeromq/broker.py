@@ -69,8 +69,7 @@ class Server(object):
         self.sw_in.on_recv(self.handle_sw_in_recv)
         self.db_in.on_recv(self.handle_db_in_recv)
         self.spiders_in.on_recv(self.handle_spiders_in_recv)
-        logging.basicConfig(format="%(asctime)s %(message)s", datefmt="%Y-%m-%d %H:%M:%S",
-            level=logging.INFO)
+        logging.basicConfig(format="%(asctime)s %(message)s", datefmt="%Y-%m-%d %H:%M:%S", level=logging.INFO)
         self.logger = logging.getLogger("distributed_frontera.messagebus.zeromq.broker.Server")
 
     def start(self):

@@ -53,7 +53,7 @@ def listen_tcp(portrange, host, factory):
         return reactor.listenTCP(0, factory, interface=host)
     if len(portrange) == 1:
         return reactor.listenTCP(portrange[0], factory, interface=host)
-    for x in range(portrange[0], portrange[1]+1):
+    for x in range(portrange[0], portrange[1] + 1):
         try:
             return reactor.listenTCP(x, factory, interface=host)
         except error.CannotListenError:
@@ -63,4 +63,4 @@ def listen_tcp(portrange, host, factory):
 
 def chunks(l, n):
     for i in xrange(0, len(l), n):
-        yield l[i:i+n]
+        yield l[i:i + n]

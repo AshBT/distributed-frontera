@@ -7,6 +7,8 @@ from frontera.utils.misc import load_object
 
 from frontera.core.manager import FrontierManager
 from frontera.logger.handlers import CONSOLE
+from twisted.internet.task import LoopingCall
+from twisted.internet import reactor
 
 from distributed_frontera.settings import Settings
 from distributed_frontera.backends.remote.codecs.msgpack import Decoder, Encoder
@@ -18,7 +20,7 @@ logger = logging.getLogger("strategy-worker")
 class ScoringWorker(object):
     def __init__(self, settings, strategy_module):
         partition_id = settings.get('SCORING_PARTITION_ID')
-        if partition_id == None or type(partition_id) != int:
+        if partition_id is None or type(partition_id) != int:
             raise AttributeError("Scoring worker partition id isn't set.")
 
         messagebus = load_object(settings.get('MESSAGE_BUS'))
@@ -28,16 +30,17 @@ class ScoringWorker(object):
         self.consumer = spider_log.consumer(partition_id=partition_id, type='sw')
         self.scoring_log_producer = scoring_log.producer()
 
-        self._manager = FrontierManager.from_settings(settings)
+        self._manager = FrontierManager.from_settings(settings, strategy_worker=True)
         self._decoder = Decoder(self._manager.request_model, self._manager.response_model)
         self._encoder = Encoder(self._manager.request_model)
 
         self.consumer_batch_size = settings.get('CONSUMER_BATCH_SIZE')
         self.strategy = strategy_module.CrawlingStrategy()
-        self.backend = self._manager.backend
+        self.states = self._manager.backend.states
         self.stats = {}
         self.cache_flush_counter = 0
         self.job_id = 0
+        self.task = LoopingCall(self.work)
 
     def work(self):
         consumed = 0
@@ -74,7 +77,7 @@ class ScoringWorker(object):
             finally:
                 consumed += 1
 
-        self.backend.fetch_states(list(fingerprints))
+        self.states.fetch(fingerprints)
         fingerprints.clear()
         results = []
         for msg in batch:
@@ -85,7 +88,8 @@ class ScoringWorker(object):
             type = msg[0]
             if type == 'add_seeds':
                 _, seeds = msg
-                for seed in seeds: seed.meta['jid'] = self.job_id
+                for seed in seeds:
+                    seed.meta['jid'] = self.job_id
                 results.extend(self.on_add_seeds(seeds))
                 continue
 
@@ -107,7 +111,7 @@ class ScoringWorker(object):
 
         if self.cache_flush_counter == 30:
             logger.info("Flushing states")
-            self.backend.flush_states(is_clear=False)
+            self.states.flush(force_clear=False)
             logger.info("Flushing states finished")
             self.cache_flush_counter = 0
 
@@ -122,15 +126,20 @@ class ScoringWorker(object):
         self.stats['last_consumption_run'] = asctime()
 
     def run(self):
-        while True:
-            self.work()
+        self.task.start(interval=0)
+        reactor.addSystemEventTrigger('before', 'shutdown', self.stop)
+        reactor.run()
+
+    def stop(self):
+        logger.info("Stopping frontier manager.")
+        self._manager.stop()
 
     def on_add_seeds(self, seeds):
         logger.info('Adding %i seeds', len(seeds))
         seed_map = dict(map(lambda seed: (seed.meta['fingerprint'], seed), seeds))
-        self.backend.update_states(seeds, False)
+        self.states.set_states(seeds)
         scores = self.strategy.add_seeds(seeds)
-        self.backend.update_states(seeds, True)
+        self.states.update_cache(seeds)
 
         output = []
         for fingerprint, score in scores.iteritems():
@@ -151,9 +160,9 @@ class ScoringWorker(object):
         objs_list = [response]
         objs_list.extend(links)
         objs = dict(map(lambda obj: (obj.meta['fingerprint'], obj), objs_list))
-        self.backend.update_states(objs_list, False)
+        self.states.set_states(objs_list)
         scores = self.strategy.page_crawled(response, links)
-        self.backend.update_states(objs_list, True)
+        self.states.update_cache(objs_list)
 
         output = []
         for fingerprint, score in scores.iteritems():
@@ -169,9 +178,9 @@ class ScoringWorker(object):
         return output
 
     def on_request_error(self, request, error):
-        self.backend.update_states(request, False)
+        self.states.set_states(request)
         scores = self.strategy.page_error(request, error)
-        self.backend.update_states(request, True)
+        self.states.update_cache(request)
         assert len(scores) == 1
         fingerprint, score = scores.popitem()
         if score is not None:
@@ -186,7 +195,7 @@ class ScoringWorker(object):
 
 
 if __name__ == '__main__':
-    parser = ArgumentParser(description="Crawl frontier scoring worker.")
+    parser = ArgumentParser(description="Frontera strategy worker.")
     parser.add_argument('--config', type=str, required=True,
                         help='Settings module name, should be accessible by import')
     parser.add_argument('--log-level', '-L', type=str, default='INFO',

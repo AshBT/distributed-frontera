@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
-import logging, sys
+import logging
 from argparse import ArgumentParser
 from time import asctime
 
 from twisted.internet import reactor
+from frontera.core.models import Request
+from frontera.core.components import DistributedBackend
 from frontera.core.manager import FrontierManager
 from frontera.utils.url import parse_domain_from_url_fast
 from frontera.logger.handlers import CONSOLE
@@ -19,7 +21,8 @@ logger = logging.getLogger("db-worker")
 
 
 class Slot(object):
-    def __init__(self, new_batch, consume_incoming, consume_scoring, no_batches, no_scoring, new_batch_delay, no_incoming):
+    def __init__(self, new_batch, consume_incoming, consume_scoring, no_batches, enable_strategy_worker,
+                 new_batch_delay, no_incoming):
         self.new_batch = CallLaterOnce(new_batch)
         self.new_batch.setErrback(self.error)
 
@@ -32,9 +35,8 @@ class Slot(object):
         self.scoring_consumption = CallLaterOnce(consume_scoring)
         self.scoring_consumption.setErrback(self.error)
 
-        self.is_finishing = False
         self.disable_new_batches = no_batches
-        self.disable_scoring_consumption = no_scoring
+        self.disable_scoring_consumption = not enable_strategy_worker
         self.disable_incoming = no_incoming
         self.new_batch_delay = new_batch_delay
 
@@ -45,36 +47,44 @@ class Slot(object):
     def schedule(self, on_start=False):
         if on_start and not self.disable_new_batches:
             self.new_batch.schedule(0)
-        if not self.is_finishing:
-            if not self.disable_incoming:
-                self.consumption.schedule()
-            if not self.disable_new_batches:
-                self.new_batch.schedule(self.new_batch_delay)
-            if not self.disable_scoring_consumption:
-                self.scoring_consumption.schedule()
+
+        if not self.disable_incoming:
+            self.consumption.schedule()
+        if not self.disable_new_batches:
+            self.new_batch.schedule(self.new_batch_delay)
+        if not self.disable_scoring_consumption:
+            self.scoring_consumption.schedule()
         self.scheduling.schedule(5.0)
 
 
 class FrontierWorker(object):
-    def __init__(self, settings, no_batches, no_scoring, no_incoming):
+    def __init__(self, settings, no_batches, no_incoming):
         messagebus = load_object(settings.get('MESSAGE_BUS'))
         self.mb = messagebus(settings)
         spider_log = self.mb.spider_log()
-        scoring_log = self.mb.scoring_log()
+
         self.spider_feed = self.mb.spider_feed()
         self.spider_log_consumer = spider_log.consumer(partition_id=None, type='db')
-        self.scoring_log_consumer = scoring_log.consumer()
         self.spider_feed_producer = self.spider_feed.producer()
 
-        self._manager = FrontierManager.from_settings(settings)
+        self._manager = FrontierManager.from_settings(settings, db_worker=True)
         self._backend = self._manager.backend
         self._encoder = Encoder(self._manager.request_model)
         self._decoder = Decoder(self._manager.request_model, self._manager.response_model)
 
+        if isinstance(self._backend, DistributedBackend):
+            scoring_log = self.mb.scoring_log()
+            self.scoring_log_consumer = scoring_log.consumer()
+            self.queue = self._backend.queue
+            self.strategy_enabled = True
+        else:
+            self.strategy_enabled = False
+
         self.consumer_batch_size = settings.get('CONSUMER_BATCH_SIZE')
+        self.spider_feed_partitioning = 'fingerprint' if not settings.get('QUEUE_HOSTNAME_PARTITIONING') else 'hostname'
         self.max_next_requests = settings.MAX_NEXT_REQUESTS
-        self.slot = Slot(self.new_batch, self.consume_incoming, self.consume_scoring, no_batches, no_scoring,
-                         settings.get('NEW_BATCH_DELAY'), no_incoming)
+        self.slot = Slot(self.new_batch, self.consume_incoming, self.consume_scoring, no_batches,
+                         self.strategy_enabled, settings.get('NEW_BATCH_DELAY'), no_incoming)
         self.job_id = 0
         self.stats = {}
 
@@ -83,7 +93,12 @@ class FrontierWorker(object):
 
     def run(self):
         self.slot.schedule(on_start=True)
+        reactor.addSystemEventTrigger('before', 'shutdown', self.stop)
         reactor.run()
+
+    def stop(self):
+        logger.info("Stopping frontier manager.")
+        self._manager.stop()
 
     def disable_new_batches(self):
         self.slot.disable_new_batches = True
@@ -136,7 +151,12 @@ class FrontierWorker(object):
                             self.spider_feed.mark_busy(partition_id)
             finally:
                 consumed += 1
-
+        """
+        # TODO: Think how it should be implemented in DB-worker only mode.
+        if not self.strategy_enabled and self._backend.finished():
+            logger.info("Crawling is finished.")
+            reactor.stop()
+        """
         logger.info("Consumed %d items.", consumed)
         self.stats['last_consumed'] = consumed
         self.stats['last_consumption_run'] = asctime()
@@ -145,7 +165,8 @@ class FrontierWorker(object):
 
     def consume_scoring(self, *args, **kwargs):
         consumed = 0
-        batch = {}
+        seen = set()
+        batch = []
         for m in self.scoring_log_consumer.get_messages(count=self.consumer_batch_size):
             try:
                 msg = self._decoder.decode(m)
@@ -155,12 +176,14 @@ class FrontierWorker(object):
             else:
                 if msg[0] == 'update_score':
                     _, fprint, score, url, schedule = msg
-                    batch[fprint] = (score, url, schedule)
+                    if fprint not in seen:
+                        batch.append((fprint, score, Request(url), schedule))
+                    seen.add(fprint)
                 if msg[0] == 'new_job_id':
                     self.job_id = msg[1]
             finally:
                 consumed += 1
-        self._backend.update_score(batch)
+        self.queue.schedule(batch)
 
         logger.info("Consumed %d items during scoring consumption.", consumed)
         self.stats['last_consumed_scoring'] = consumed
@@ -168,11 +191,32 @@ class FrontierWorker(object):
         self.slot.schedule()
 
     def new_batch(self, *args, **kwargs):
+        def get_hostname(request):
+            try:
+                netloc, name, scheme, sld, tld, subdomain = parse_domain_from_url_fast(request.url)
+            except Exception, e:
+                logger.error("URL parsing error %s, fingerprint %s, url %s" % (e, request.meta['fingerprint'],
+                                                                               request.url))
+                return None
+            else:
+                return name.encode('utf-8', 'ignore')
+
+        def get_fingerprint(request):
+            return request.meta['fingerprint']
+
         partitions = self.spider_feed.available_partitions()
         logger.info("Getting new batches for partitions %s" % str(",").join(map(str, partitions)))
         if not partitions:
             return 0
+
         count = 0
+        if self.spider_feed_partitioning == 'hostname':
+            get_key = get_hostname
+        elif self.spider_feed_partitioning == 'fingerprint':
+            get_key = get_fingerprint
+        else:
+            raise Exception("Unexpected value in self.spider_feed_partitioning")
+
         for request in self._backend.get_next_requests(self.max_next_requests, partitions=partitions):
             try:
                 request.meta['jid'] = self.job_id
@@ -183,17 +227,8 @@ class FrontierWorker(object):
                                                                                request.url))
                 continue
             finally:
-                count +=1
-            try:
-                netloc, name, scheme, sld, tld, subdomain = parse_domain_from_url_fast(request.url)
-            except Exception, e:
-                logger.error("URL parsing error %s, fingerprint %s, url %s" % (e,
-                                                                                request.meta['fingerprint'],
-                                                                                request.url))
-                continue
-            else:
-                key = name.encode('utf-8', 'ignore')
-                self.spider_feed_producer.send(key, eo)
+                count += 1
+            self.spider_feed_producer.send(get_key(request), eo)
         logger.info("Pushed new batch of %d items", count)
         self.stats['last_batch_size'] = count
         self.stats.setdefault('batches_after_start', 0)
@@ -203,18 +238,16 @@ class FrontierWorker(object):
 
 
 if __name__ == '__main__':
-    parser = ArgumentParser(description="Crawl frontier worker.")
+    parser = ArgumentParser(description="Frontera DB worker.")
     parser.add_argument('--no-batches', action='store_true',
-                        help='Disables periodical generation of new batches')
-    parser.add_argument('--no-scoring', action='store_true',
-                        help='Disables periodical consumption of scoring topic')
+                        help='Disables periodical generation of new batches.')
     parser.add_argument('--no-incoming', action='store_true',
-                        help='Disables periodical incoming topic consumption')
+                        help='Disables periodical incoming topic consumption.')
     parser.add_argument('--config', type=str, required=True,
-                        help='Settings module name, should be accessible by import')
+                        help='Settings module name, should be accessible by import.')
     parser.add_argument('--log-level', '-L', type=str, default='INFO',
-                        help="Log level, for ex. DEBUG, INFO, WARN, ERROR, FATAL")
-    parser.add_argument('--port', type=int, help="Json Rpc service port to listen")
+                        help="Log level, for ex. DEBUG, INFO, WARN, ERROR, FATAL.")
+    parser.add_argument('--port', type=int, help="Json Rpc service port to listen.")
     args = parser.parse_args()
     logger.setLevel(args.log_level)
     logger.addHandler(CONSOLE)
@@ -223,7 +256,7 @@ if __name__ == '__main__':
     if args.port:
         settings.set("JSONRPC_PORT", [args.port])
 
-    worker = FrontierWorker(settings, args.no_batches, args.no_scoring, args.no_incoming)
+    worker = FrontierWorker(settings, args.no_batches, args.no_incoming)
     server = WorkerJsonRpcService(worker, settings)
     server.start_listening()
     worker.run()
