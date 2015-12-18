@@ -13,7 +13,7 @@ Prerequisites
 
 Here is what services needs to be installed and configured before running Frontera:
 
-- HBase.
+- HBase
 
 These can be set up locally, no specific tuning is needed.
 Also you need to have installed Python 2.7+ and Scrapy library.
@@ -23,6 +23,11 @@ Frontera installation
 For Ubuntu, type in command line: ::
 
     $ pip install distributed-frontera
+
+Create a namespace in the HBase shell for the crawler: ::
+
+    $ bin/hbase shell
+    > create_namespace 'crawler'
 
 
 Checkout a simple Scrapy spider
@@ -38,7 +43,7 @@ of predefined options, please consult settings reference to get more information
 Start cluster
 =============
 
-First, let's start ZeroMQ broker. ::
+First, make sure that the HBase Thrift server is up and running. Next, let's start ZeroMQ broker. ::
 
     $ python -m distributed_frontera.messagebus.zeromq.broker
 
