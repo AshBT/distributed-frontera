@@ -9,7 +9,12 @@ addons:
       - libsnappy-dev
 install:
   - pip install -U tox wheel
+  - pip install -r requirements.txt
+before_script:
+  - distributed_frontera/tests/run_zmq_broker.sh
 script: tox
+after_script:
+  - cat broker.log
 deploy:
   provider: pypi
   distributions: sdist bdist_wheel

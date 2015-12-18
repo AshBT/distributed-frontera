@@ -1,5 +1,6 @@
 happybase
 kafka-python
+pyzmq
 msgpack-python
 python-snappy
 frontera

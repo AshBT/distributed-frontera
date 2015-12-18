@@ -32,6 +32,7 @@ setup(
     install_requires=[
         'happybase',
         'kafka-python',
+        'pyzmq',
         'msgpack-python',
         'python-snappy',
         'frontera'
