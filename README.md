@@ -1,23 +1,10 @@
-## Installation
-
-For Ubuntu:
-```bash
-$ apt-get install libsnappy-dev
-$ pip install distributed-frontera
-```
-
-## Documentation
-
-See http://distributed-frontera.readthedocs.org/
-
-EuroPython's presentation http://www.slideshare.net/sixtyone/fronteraopen-source-large-scale-web-crawling-framework
-
-## Google groups
-
-See https://groups.google.com/a/scrapinghub.com/forum/#!forum/frontera
-
-## Frontera
-
+# Deprecated
+This project is deprecated since January 2016, it's contents were merged to Frontera main repository. Please use
 https://github.com/scrapinghub/frontera
 
 http://frontera.readthedocs.org/
+
+
+## Questions?
+
+Use https://groups.google.com/a/scrapinghub.com/forum/#!forum/frontera
